@@ -40,11 +40,11 @@ test("owner signs in by magic link, is forced through MFA enrollment, and sees b
 
   // Inviting sends a sign-in link to the local mail catcher only.
   const invitee = `newhire-${Date.now()}@example.test`;
-  await page.getByLabel("Email").fill(invitee);
-  await page.getByLabel("Role").selectOption("viewer");
+  await page.locator("#invite-email").fill(invitee);
+  await page.locator("#invite-role").selectOption({ value: "viewer" });
   await page.getByRole("button", { name: "Send invitation" }).click();
   await expect(page.getByText(`Invited ${invitee}`)).toBeVisible();
-  await expect(page.getByTestId("member-list").locator("form")).toHaveCount(8);
+  await expect(page.getByTestId("member-list")).toContainText(invitee.split("@")[0]);
 });
 
 test("partner (operator) cannot open members", async ({ page }) => {
