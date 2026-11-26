@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
+// Cache Components is intentionally off: every internal page reads the
+// signed-in session and per-user RLS data, so pages render per request.
+// See docs/adr/0003-rendering-and-auth.md.
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  poweredByHeader: false,
   turbopack: {
     rules: {
       "*.css": {
