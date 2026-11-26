@@ -1,6 +1,6 @@
 begin;
 \ir _helpers.psql
-select plan(3);
+select plan(6);
 
 -- Every SECURITY DEFINER function in public that signed-in users may call.
 -- Adding one requires updating this list on purpose.
@@ -21,6 +21,17 @@ select set_eq(
      where n.nspname = 'public' and p.prosecdef and has_function_privilege('service_role', p.oid, 'execute') $$,
   array[]::text[],
   'service_role has no SECURITY DEFINER functions in Phase 0');
+
+-- New functions start closed: one created after the migrations (as the role that
+-- owns migrations) is not executable by anon, authenticated or service_role.
+create function public.zz_created_after_migrations() returns int language sql as $$ select 1 $$;
+
+select ok(not has_function_privilege('anon', 'public.zz_created_after_migrations()', 'execute'),
+  'a function created after the migrations is not executable by anon');
+select ok(not has_function_privilege('authenticated', 'public.zz_created_after_migrations()', 'execute'),
+  'a function created after the migrations is not executable by authenticated');
+select ok(not has_function_privilege('service_role', 'public.zz_created_after_migrations()', 'execute'),
+  'a function created after the migrations is not executable by service_role');
 
 select * from finish();
 rollback;

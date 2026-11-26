@@ -132,6 +132,19 @@ export async function inviteMember(_prev: FormState, formData: FormData): Promis
   if (parsed.data.role === "owner" && !(await hasPerm(org.id, "org.manage")))
     return fail("Only an owner can invite an owner.");
 
+  // Brand scope, as the signed-in user, before any email or account is created.
+  // The memberships policy enforces the same rule, but checking first means a
+  // refused invite never sends mail or leaves a half-created account.
+  const brandIds = parsed.data.brand_ids.length ? parsed.data.brand_ids : null;
+  const scope = await (
+    await createSupabaseServerClient()
+  ).rpc("brand_ids_within_caller", {
+    p_org: org.id,
+    p_brand_ids: brandIds as string[],
+  });
+  if (scope.error || scope.data !== true)
+    return fail("You can only invite people to brands you have access to. Pick at least one brand.");
+
   const admin = createSupabaseAdminClient();
   let userId: string | null = null;
   const invite = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
@@ -157,7 +170,7 @@ export async function inviteMember(_prev: FormState, formData: FormData): Promis
         org_id: org.id,
         user_id: userId,
         role: parsed.data.role,
-        brand_ids: parsed.data.brand_ids.length ? parsed.data.brand_ids : null,
+        brand_ids: brandIds,
         status: "invited",
       })
     ).error,

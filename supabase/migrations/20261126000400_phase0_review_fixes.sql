@@ -197,13 +197,17 @@ create policy memberships_delete on public.memberships for delete to authenticat
   using (public.has_perm(org_id, 'members.manage') and public.brand_ids_within_caller(org_id, brand_ids));
 
 -- ---------------------------------------------------------------------------
--- #5 Function privileges. Hosted Supabase grants EXECUTE on new functions to
--- anon, authenticated and service_role by default. Revoke that default and
--- grant explicitly. tests/database/05_function_privileges enforces an allow-list.
+-- #5 Function privileges. Postgres grants EXECUTE on every new function to
+-- PUBLIC, and hosted Supabase adds per-schema defaults for anon, authenticated
+-- and service_role. Remove both defaults so new functions start closed, then
+-- grant explicitly. tests/database/06_function_privileges enforces an allow-list
+-- and checks that a function created later is not executable by anon.
 -- ---------------------------------------------------------------------------
-alter default privileges in schema public revoke execute on functions from public, anon, authenticated, service_role;
--- PUBLIC's EXECUTE default is global, so it can only be removed globally (per-schema defaults only add).
+-- PUBLIC's default is global: it can only be revoked without IN SCHEMA
+-- (a per-schema ALTER DEFAULT PRIVILEGES can only add to the global default).
 alter default privileges revoke execute on functions from public;
+-- Supabase's own defaults for the API roles are per schema.
+alter default privileges in schema public revoke execute on functions from anon, authenticated, service_role;
 
 revoke execute on all functions in schema public from public, anon, authenticated, service_role;
 

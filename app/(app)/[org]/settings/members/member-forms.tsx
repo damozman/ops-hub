@@ -18,10 +18,12 @@ export function InviteForm({
   orgSlug,
   brands,
   canInviteOwner,
+  brandLimited = false,
 }: {
   orgSlug: string;
   brands: { id: string; name: string }[];
   canInviteOwner: boolean;
+  brandLimited?: boolean;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(inviteMember, { status: "idle" });
   return (
@@ -46,7 +48,9 @@ export function InviteForm({
         </div>
       </div>
       <fieldset className="space-y-1">
-        <legend className="text-sm font-medium">Brands (leave all unticked for every brand)</legend>
+        <legend className="text-sm font-medium">
+          {brandLimited ? "Brands (pick at least one of yours)" : "Brands (leave all unticked for every brand)"}
+        </legend>
         <div className="flex flex-wrap gap-4">
           {brands.map((b) => (
             <label key={b.id} className="flex items-center gap-2 text-sm">
@@ -68,15 +72,18 @@ export function MemberRow({
   member,
   canEditOwner,
   isSelf,
+  outOfScope = false,
 }: {
   orgSlug: string;
   member: { id: string; role: string; status: string; display_name: string; brands: string };
   canEditOwner: boolean;
   isSelf: boolean;
+  outOfScope?: boolean;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateMember, { status: "idle" });
   // Your own role/brands are changed by another manager (enforced in the database too).
-  const locked = isSelf || (member.role === "owner" && !canEditOwner);
+  // Members with brands outside a brand-limited manager's own are locked the same way.
+  const locked = isSelf || outOfScope || (member.role === "owner" && !canEditOwner);
   return (
     <form
       action={action}
@@ -89,6 +96,7 @@ export function MemberRow({
         <div className="text-xs text-muted-foreground">
           {member.brands}
           {isSelf ? " · you" : ""}
+          {!isSelf && outOfScope ? " · outside your brands" : ""}
         </div>
       </div>
       <Select name="role" defaultValue={member.role} disabled={locked} aria-label="Role">

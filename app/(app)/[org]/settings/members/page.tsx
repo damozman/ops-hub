@@ -24,6 +24,11 @@ export default async function MembersPage({ params }: PageProps<"/[org]/settings
     hasPerm(org.id, "org.manage"),
   ]);
   const nameOf = (id: string) => profiles?.find((p) => p.user_id === id)?.display_name ?? "Unknown user";
+  // A brand-limited manager may only manage members whose brands are within their own
+  // (the memberships policy enforces this; the UI locks those rows to match).
+  const myBrands = members?.find((m) => m.user_id === session.userId)?.brand_ids ?? null;
+  const outOfScope = (ids: string[] | null) =>
+    myBrands !== null && (ids === null || ids.length === 0 || !ids.every((id) => myBrands.includes(id)));
   const brandNames = (ids: string[] | null) =>
     ids ? ids.map((id) => brands.find((b) => b.id === id)?.name ?? "hidden brand").join(", ") : "All brands";
 
@@ -35,7 +40,12 @@ export default async function MembersPage({ params }: PageProps<"/[org]/settings
         <CardDescription className="mb-4 mt-1">
           They get a sign-in link by email. Owners, admins and operators must set up an authenticator app.
         </CardDescription>
-        <InviteForm orgSlug={slug} brands={brands.map((b) => ({ id: b.id, name: b.name }))} canInviteOwner={isOwner} />
+        <InviteForm
+          orgSlug={slug}
+          brands={brands.map((b) => ({ id: b.id, name: b.name }))}
+          canInviteOwner={isOwner}
+          brandLimited={myBrands !== null}
+        />
       </Card>
       <Card>
         <CardTitle className="mb-2">People</CardTitle>
@@ -46,6 +56,7 @@ export default async function MembersPage({ params }: PageProps<"/[org]/settings
               orgSlug={slug}
               canEditOwner={isOwner}
               isSelf={m.user_id === session.userId}
+              outOfScope={outOfScope(m.brand_ids)}
               member={{
                 id: m.id,
                 role: m.role,
