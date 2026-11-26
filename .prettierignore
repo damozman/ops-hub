@@ -1,0 +1,9 @@
+node_modules
+.next
+supabase/.temp
+supabase/config.jsonc
+docs/BUILD_PLAN.md
+docs/CLAUDE_KICKOFF_PHASES_0-2.md
+package-lock.json
+test-results
+playwright-report

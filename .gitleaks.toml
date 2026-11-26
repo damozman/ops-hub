@@ -1,0 +1,14 @@
+# gitleaks config: default rules, plus allowlist for the well-known public
+# Supabase *local development* demo keys that `supabase start` prints.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Supabase local demo values and invented test fixtures"
+regexes = [
+  '''super-secret-jwt-token-with-at-least-32-characters-long''',
+]
+paths = [
+  '''docs/BUILD_PLAN\.md''',
+  '''docs/CLAUDE_KICKOFF_PHASES_0-2\.md''',
+]

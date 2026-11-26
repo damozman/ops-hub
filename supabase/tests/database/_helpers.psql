@@ -1,0 +1,51 @@
+-- Shared helpers for database tests. Included with \ir from each test file,
+-- inside that file's transaction, so nothing persists after the rollback.
+
+create extension if not exists pgtap with schema extensions;
+set search_path = public, extensions;
+
+create schema if not exists tests;
+grant usage on schema tests to authenticated, anon, service_role;
+
+-- Fixed seed ids (supabase/seed.sql)
+create or replace function tests.org_main() returns uuid language sql immutable as $$ select '10000000-0000-4000-8000-000000000001'::uuid $$;
+create or replace function tests.org_other() returns uuid language sql immutable as $$ select '10000000-0000-4000-8000-000000000002'::uuid $$;
+create or replace function tests.brand_fpd() returns uuid language sql immutable as $$ select '20000000-0000-4000-8000-000000000001'::uuid $$;
+create or replace function tests.brand_369() returns uuid language sql immutable as $$ select '20000000-0000-4000-8000-000000000002'::uuid $$;
+create or replace function tests.brand_oa() returns uuid language sql immutable as $$ select '20000000-0000-4000-8000-000000000003'::uuid $$;
+create or replace function tests.u_owner() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000001'::uuid $$;
+create or replace function tests.u_partner() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000002'::uuid $$;
+create or replace function tests.u_reviewer() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000003'::uuid $$;
+create or replace function tests.u_viewer() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000004'::uuid $$;
+create or replace function tests.u_client() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000005'::uuid $$;
+create or replace function tests.u_brandlimited() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000006'::uuid $$;
+create or replace function tests.u_outsider() returns uuid language sql immutable as $$ select '30000000-0000-4000-8000-000000000007'::uuid $$;
+grant execute on all functions in schema tests to authenticated, anon, service_role;
+
+-- Act as a signed-in user. aal2 = passed MFA.
+create or replace function tests.act_as(p_user uuid, p_aal text default 'aal2')
+returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', p_user, 'role', 'authenticated', 'aal', p_aal)::text, true);
+  perform set_config('role', 'authenticated', true);
+end;
+$$;
+
+create or replace function tests.act_as_role(p_role text)
+returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('role', p_role)::text, true);
+  perform set_config('role', p_role, true);
+end;
+$$;
+
+-- Back to the superuser test runner.
+create or replace function tests.reset_role()
+returns void language plpgsql as $$
+begin
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', '', true);
+end;
+$$;
+grant execute on all functions in schema tests to authenticated, anon, service_role;
