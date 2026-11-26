@@ -202,6 +202,8 @@ create policy memberships_delete on public.memberships for delete to authenticat
 -- grant explicitly. tests/database/05_function_privileges enforces an allow-list.
 -- ---------------------------------------------------------------------------
 alter default privileges in schema public revoke execute on functions from public, anon, authenticated, service_role;
+-- PUBLIC's EXECUTE default is global, so it can only be removed globally (per-schema defaults only add).
+alter default privileges revoke execute on functions from public;
 
 revoke execute on all functions in schema public from public, anon, authenticated, service_role;
 
