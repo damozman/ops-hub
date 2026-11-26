@@ -72,7 +72,12 @@ export async function signInFresh(page: Page, email: string) {
   if (!user) throw new Error(`No seed user ${email}`);
   const { data: factors } = await admin.auth.admin.mfa.listFactors({ userId: user.id });
   for (const f of factors?.factors ?? []) await admin.auth.admin.mfa.deleteFactor({ userId: user.id, id: f.id });
-  await signInWithMagicLink(page, email);
+  // Setup-only sign-in: mint the magic link with the local service role instead of
+  // emailing it, so repeated sign-ins don't run into GoTrue's OTP rate limits.
+  // (The emailed flow itself is covered by phase0-auth.spec.ts.)
+  const { data: link, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+  if (error || !link.properties?.hashed_token) throw error ?? new Error("generateLink returned no token");
+  await page.goto(`/auth/confirm?token_hash=${link.properties.hashed_token}&type=magiclink`);
   await page.waitForURL(/\/(mfa|[a-z0-9-]+\/dashboard)$/);
   if (page.url().endsWith("/mfa")) {
     await enrollTotp(page);
