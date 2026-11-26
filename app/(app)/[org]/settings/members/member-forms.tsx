@@ -67,13 +67,16 @@ export function MemberRow({
   orgSlug,
   member,
   canEditOwner,
+  isSelf,
 }: {
   orgSlug: string;
   member: { id: string; role: string; status: string; display_name: string; brands: string };
   canEditOwner: boolean;
+  isSelf: boolean;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateMember, { status: "idle" });
-  const locked = member.role === "owner" && !canEditOwner;
+  // Your own role/brands are changed by another manager (enforced in the database too).
+  const locked = isSelf || (member.role === "owner" && !canEditOwner);
   return (
     <form
       action={action}
@@ -83,7 +86,10 @@ export function MemberRow({
       <input type="hidden" name="id" value={member.id} />
       <div>
         <div className="font-medium">{member.display_name}</div>
-        <div className="text-xs text-muted-foreground">{member.brands}</div>
+        <div className="text-xs text-muted-foreground">
+          {member.brands}
+          {isSelf ? " · you" : ""}
+        </div>
       </div>
       <Select name="role" defaultValue={member.role} disabled={locked} aria-label="Role">
         {["owner", "admin", "operator", "reviewer", "viewer", "client"].map((r) => (

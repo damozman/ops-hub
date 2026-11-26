@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { enrollTotp, signInWithMagicLink } from "./helpers";
+import { enrollTotp, latestMessageFor, signInWithMagicLink } from "./helpers";
 
 // Seed users from supabase/seed.sql (all invented).
 const OWNER = "owner@example.test";
@@ -12,7 +12,10 @@ test("signed-out visitors are sent to /login", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("owner signs in by magic link, is forced through MFA enrollment, and sees both brands", async ({ page }) => {
+test("owner signs in by magic link, is forced through MFA enrollment, and sees both brands", async ({
+  page,
+  browser,
+}) => {
   await signInWithMagicLink(page, OWNER);
   await expect(page).toHaveURL(/\/mfa$/);
 
@@ -45,6 +48,16 @@ test("owner signs in by magic link, is forced through MFA enrollment, and sees b
   await page.getByRole("button", { name: "Send invitation" }).click();
   await expect(page.getByText(`Invited ${invitee}`)).toBeVisible();
   await expect(page.getByTestId("member-list")).toContainText(invitee.split("@")[0]);
+
+  // The invitee clicks the email link (token_hash flow) in their own browser and lands in the app.
+  const inviteLink = await latestMessageFor(invitee, Date.now() - 60_000);
+  expect(inviteLink).toContain("/auth/confirm?token_hash=");
+  const inviteeContext = await browser.newContext();
+  const inviteePage = await inviteeContext.newPage();
+  await inviteePage.goto(inviteLink);
+  await expect(inviteePage).toHaveURL(/\/mosley-dev\/dashboard$/);
+  await expect(inviteePage.getByTestId("role")).toHaveText("viewer");
+  await inviteeContext.close();
 });
 
 test("partner (operator) cannot open members", async ({ page }) => {

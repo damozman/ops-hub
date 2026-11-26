@@ -15,8 +15,8 @@ select throws_ok(
   $$ update memberships set role = 'viewer' where user_id = tests.u_owner() and org_id = tests.org_main() $$,
   '42501', null, 'admin cannot demote the owner');
 
--- Last active owner cannot be demoted, even by themselves
-select tests.act_as(tests.u_owner());
+-- Last active owner cannot be demoted, not even by a server job (service role / no user)
+select tests.reset_role();
 select throws_ok(
   $$ update memberships set role = 'admin' where user_id = tests.u_owner() and org_id = tests.org_main() $$,
   '23514', null, 'last owner cannot be demoted');

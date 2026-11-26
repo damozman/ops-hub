@@ -282,13 +282,15 @@
       //   "sender_name": "Admin"
       // },
 
-      // Uncomment to customize email template
-      // "template": {
-      //   "invite": {
-      //     "subject": "You have been invited",
-      //     "content_path": "./supabase/templates/invite.html"
-      //   }
-      // },
+      // Invitations are sent by the admin API, which doesn't use PKCE, so the link must
+      // carry a token_hash to /auth/confirm. The hosted project needs the same template
+      // (Dashboard > Authentication > Email Templates > Invite user). See README.
+      "template": {
+        "invite": {
+          "subject": "You're invited to Ops Hub",
+          "content_path": "./supabase/templates/invite.html"
+        }
+      },
 
       // Uncomment to customize notification email template
       // "notification": {

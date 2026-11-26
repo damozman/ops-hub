@@ -1,10 +1,14 @@
 begin;
 \ir _helpers.psql
-select plan(32);
+select plan(34);
 
 -- ---------------------------------------------------------------------------
 -- Outsider (owner of another org) sees nothing of Mosley Ventures (dev)
 -- ---------------------------------------------------------------------------
+-- A real token row so the api_tokens isolation check isn't trivially empty.
+insert into api_tokens (org_id, name, kind, token_hash, expires_at)
+values (tests.org_main(), 'jack (test)', 'service:drafts', 'test-hash-1', now() + interval '30 days');
+
 select tests.act_as(tests.u_outsider());
 select is((select count(*) from orgs where id = tests.org_main()), 0::bigint, 'outsider: no main org row');
 select is((select count(*) from brands where org_id = tests.org_main()), 0::bigint, 'outsider: no main brands');
@@ -69,9 +73,12 @@ select is((select role from memberships where user_id = tests.u_partner() and or
 select is((select value from settings where org_id = tests.org_main() and key = 'two_person_rule'), 'true'::jsonb,
   'operator: cannot change settings');
 
--- Operator cannot read service tokens
+-- Operator cannot read service tokens; owner can (without the hash)
 select tests.act_as(tests.u_partner());
 select ok(not public.has_perm(tests.org_main(), 'members.manage'), 'operator: no members.manage');
+select is((select count(*) from api_tokens), 0::bigint, 'operator: cannot see api tokens');
+select tests.act_as(tests.u_owner());
+select is((select count(*) from api_tokens where org_id = tests.org_main()), 1::bigint, 'owner: sees the org api token');
 
 -- ---------------------------------------------------------------------------
 -- Owner can manage settings and members

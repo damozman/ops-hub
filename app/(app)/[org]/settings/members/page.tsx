@@ -1,10 +1,12 @@
 import { getOrgBySlug, getVisibleBrands, hasPerm } from "@/server/permissions";
+import { requireAppUser } from "@/server/auth/session";
 import { createSupabaseServerClient } from "@/server/db/server-client";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { NotAllowed } from "../../not-allowed";
 import { InviteForm, MemberRow } from "./member-forms";
 
 export default async function MembersPage({ params }: PageProps<"/[org]/settings/members">) {
+  const session = await requireAppUser();
   const { org: slug } = await params;
   const org = await getOrgBySlug(slug);
   // Server check here, and RLS + the membership guard in the database.
@@ -43,6 +45,7 @@ export default async function MembersPage({ params }: PageProps<"/[org]/settings
               key={m.id}
               orgSlug={slug}
               canEditOwner={isOwner}
+              isSelf={m.user_id === session.userId}
               member={{
                 id: m.id,
                 role: m.role,

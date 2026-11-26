@@ -5,7 +5,7 @@ const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
 
 type MailpitSummary = { ID: string; To: { Address: string }[]; Created: string };
 
-async function latestMessageFor(email: string, after: number): Promise<string> {
+export async function latestMessageFor(email: string, after: number): Promise<string> {
   for (let i = 0; i < 40; i++) {
     const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${email}"`)}`);
     const body = (await res.json()) as { messages: MailpitSummary[] };
@@ -15,7 +15,7 @@ async function latestMessageFor(email: string, after: number): Promise<string> {
         Text: string;
         HTML: string;
       };
-      const match = (full.HTML + full.Text).match(/https?:\/\/[^\s"'<>]+\/auth\/v1\/verify[^\s"'<>]+/);
+      const match = (full.HTML + full.Text).match(/https?:\/\/[^\s"'<>]+\/auth\/(?:v1\/verify|confirm)[^\s"'<>]+/);
       if (match) return match[0].replace(/&amp;/g, "&");
     }
     await new Promise((r) => setTimeout(r, 250));
