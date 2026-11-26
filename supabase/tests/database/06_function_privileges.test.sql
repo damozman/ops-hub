@@ -12,7 +12,10 @@ select set_eq(
         -- Phase 1
         'can_any_brand', 'import_guard_match',
         -- Phase 1 review fixes
-        'auth_sees', 'import_contacts'],
+        'auth_sees', 'import_contacts',
+        -- Phase 2 (each checks permission + brand itself)
+        'auth_sees_job', 'set_checklist_item', 'override_check_result', 'job_gates', 'transition_job',
+        'approve_subject', 'release_outbox', 'cancel_outbox'],
   'authenticated can execute only the allow-listed SECURITY DEFINER functions');
 
 select is(
@@ -23,8 +26,8 @@ select is(
 select set_eq(
   $$ select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public' and p.prosecdef and has_function_privilege('service_role', p.oid, 'execute') $$,
-  array['submit_form', 'public_form', 'mark_notifications_digested', 'notifications_for_digest'],
-  'service_role can execute only the server-job functions (lead form intake, notification digest)');
+  array['submit_form', 'public_form', 'mark_notifications_digested', 'notifications_for_digest', 'record_check_run'],
+  'service_role can execute only the server-job functions (lead form intake, notification digest, checks engine results)');
 
 -- New functions start closed: one created after the migrations (as the role that
 -- owns migrations) is not executable by anon, authenticated or service_role.

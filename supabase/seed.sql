@@ -126,3 +126,40 @@ insert into public.forms (id, org_id, brand_id, name, consent_text, consent_text
 insert into public.import_guard_signatures (org_id, label, header_signature, threshold, created_by) values
   ('10000000-0000-4000-8000-000000000001', 'TEST AAFES-like template',
    array['VENDOR_ITEM_NO', 'EXCH_DEPT', 'MFR_PART', 'UPC_CODE', 'RETAIL_PRICE'], 0.8, '30000000-0000-4000-8000-000000000001');
+
+-- ---------------------------------------------------------------------------
+-- Phase 2: client accounts, jobs, job items (all fictional). SKUs and specs are invented.
+--   client accounts 80000000-...-01 Bluebonnet (fpd), -02 Trinity Paws (369)
+--   jobs            81000000-...-01 Bluebonnet Offer A, -02 Trinity Paws Offer B
+-- ---------------------------------------------------------------------------
+insert into public.client_accounts (id, org_id, brand_id, company_id, status, data_sensitivity, ai_policy, primary_contact_id, created_by) values
+  ('80000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
+   '60000000-0000-4000-8000-000000000004', 'active', 'public_only', 'default', '61000000-0000-4000-8000-000000000004', '30000000-0000-4000-8000-000000000001'),
+  ('80000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002',
+   '60000000-0000-4000-8000-000000000002', 'active', 'public_only', 'default', '61000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001');
+
+insert into public.jobs (id, org_id, client_account_id, offer, title, assignee_user_id, reviewer_user_id, due_at, scope, contract_ref, created_by) values
+  ('81000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '80000000-0000-4000-8000-000000000001', 'A',
+   'Bluebonnet Amazon listing refresh', '30000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001',
+   now() + interval '14 days', '{"items": 3, "fields": ["title", "bullets", "description"]}', 'UPWORK-TEST-0001', '30000000-0000-4000-8000-000000000001'),
+  ('81000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '80000000-0000-4000-8000-000000000002', 'B',
+   'Trinity Paws Google profile tune-up', '30000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001',
+   now() + interval '21 days', '{"locations": 1, "deliverables": ["gbp_description", "gbp_post", "review_request"]}', null, '30000000-0000-4000-8000-000000000001');
+
+insert into public.job_items (id, org_id, job_id, kind, marketplace, external_ref, title, source_data, created_by) values
+  ('82000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '81000000-0000-4000-8000-000000000001', 'listing', 'amazon',
+   'BB-SKU-TEST-001', 'Texas Wildflower soy candle, 8 oz',
+   '{"title": "Bluebonnet Candle Texas Wildflower Soy Candle 8 oz", "size_oz": 8, "burn_time_hours": 45, "wax": "soy", "wick": "cotton", "bullets": ["Hand-poured in Fort Worth", "About 45 hours of burn time"]}',
+   '30000000-0000-4000-8000-000000000001'),
+  ('82000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '81000000-0000-4000-8000-000000000001', 'listing', 'amazon',
+   'BB-SKU-TEST-002', 'Cedar & Sage soy candle, 12 oz',
+   '{"title": "Bluebonnet Candle Cedar Sage 12 oz", "size_oz": 12, "burn_time_hours": 70, "wax": "soy", "wick": "wood"}',
+   '30000000-0000-4000-8000-000000000001'),
+  ('82000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', '81000000-0000-4000-8000-000000000001', 'listing', 'amazon',
+   'BB-SKU-TEST-003', 'Pecan Pie travel tin, 4 oz',
+   '{"title": "Bluebonnet Candle Pecan Pie Tin 4 oz", "size_oz": 4, "burn_time_hours": 20, "wax": "soy", "pack": 1}',
+   '30000000-0000-4000-8000-000000000001'),
+  ('82000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', '81000000-0000-4000-8000-000000000002', 'location', 'gbp',
+   'TP-LOC-TEST-1', 'Trinity Paws Grooming, Fort Worth',
+   '{"name": "Trinity Paws Grooming (fictional)", "phone": "+18175550102", "hours": "Tue-Sat 8:00-17:00", "categories": ["Pet groomer"]}',
+   '30000000-0000-4000-8000-000000000001');
