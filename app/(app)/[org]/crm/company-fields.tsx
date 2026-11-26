@@ -17,11 +17,14 @@ type Company = {
 export function CompanyFields({
   orgSlug,
   brands,
+  allBrands,
   company = {},
   disabled = false,
 }: {
   orgSlug: string;
   brands: { id: string; name: string }[];
+  /** Only all-brand members may make a company Shared. */
+  allBrands: boolean;
   company?: Company;
   disabled?: boolean;
 }) {
@@ -76,6 +79,15 @@ export function CompanyFields({
             {b.name}
           </label>
         ))}
+        {allBrands && (
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="shared" defaultChecked={Boolean(company.id) && company.brand_ids === null} />{" "}
+            Shared (visible to every brand)
+          </label>
+        )}
+        {!allBrands && company.id && company.brand_ids === null && (
+          <span className="text-muted-foreground">Shared with every brand</span>
+        )}
       </div>
     </fieldset>
   );

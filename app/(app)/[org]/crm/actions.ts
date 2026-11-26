@@ -55,6 +55,21 @@ export async function saveCompany(_prev: ActionState, formData: FormData): Promi
     .getAll("brand_ids")
     .map(String)
     .filter((b) => visible.includes(b));
+  const id = optStr(formData.get("id"));
+  if (id && !uuid.safeParse(id).success) return fail("Bad company id.");
+  // No brand = Shared (visible to every brand). It must be chosen on purpose, and only
+  // all-brand members can choose it; brand-limited members may keep editing a shared
+  // company without un-sharing it. The database enforces the same rule.
+  if (brandIds.length === 0) {
+    const allBrands = await isAllBrands(org.id);
+    if (allBrands && formData.get("shared") !== "on") return fail("Pick a brand, or mark this company as Shared.");
+    if (!allBrands) {
+      const existing = id
+        ? (await supabase.from("companies").select("brand_ids").eq("id", id).eq("org_id", org.id).maybeSingle()).data
+        : null;
+      if (!existing || existing.brand_ids !== null) return fail("Pick a brand for this company.");
+    }
+  }
   const row = {
     ...parsed.data,
     website: parsed.data.website || null,
@@ -65,8 +80,6 @@ export async function saveCompany(_prev: ActionState, formData: FormData): Promi
     sells_online: formData.get("sells_online") === "on",
     brand_ids: brandIds.length ? brandIds : null,
   };
-  const id = optStr(formData.get("id"));
-  if (id && !uuid.safeParse(id).success) return fail("Bad company id.");
   const res = id
     ? await supabase.from("companies").update(row).eq("id", id).eq("org_id", org.id).select("id").single()
     : await supabase

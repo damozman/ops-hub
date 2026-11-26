@@ -128,6 +128,31 @@ as $$
   select coalesce(auth.uid() is not null and public.crm_sees(auth.uid(), p_org, p_type, p_id), false);
 $$;
 
+-- companies: a company with no brand is Shared (visible to every brand). Only
+-- all-brand members may make one shared; a brand-limited member may keep editing
+-- a company that is already shared. Jobs without a user (seed, service) are exempt.
+create or replace function public.companies_shared_write()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.brand_ids is not null and cardinality(new.brand_ids) > 0 then
+    return new;
+  end if;
+  new.brand_ids := null;  -- an empty list means shared too; store it one way
+  if auth.uid() is null or public.can_brand(new.org_id, null) then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.brand_ids is null then
+    return new;
+  end if;
+  raise exception 'Pick a brand for this company.' using errcode = '42501';
+end;
+$$;
+create trigger companies_shared_write before insert or update on public.companies
+  for each row execute function public.companies_shared_write();
+
 -- contacts: company visible, or (no company) own brand.
 drop policy contacts_select on public.contacts;
 drop policy contacts_insert on public.contacts;
@@ -264,6 +289,11 @@ drop policy files_select on public.files;
 create policy files_select on public.files for select to authenticated
   using (org_id in (select public.auth_org_ids()) and public.has_perm(org_id, 'crm.read')
          and (sensitivity <> 'client_confidential' or public.has_perm(org_id, 'crm.write'))
+         and (kind <> 'contact_import' or uploaded_by = auth.uid() or public.can_brand(org_id, null)));
+
+drop policy files_delete on public.files;
+create policy files_delete on public.files for delete to authenticated
+  using (public.has_perm(org_id, 'crm.write')
          and (kind <> 'contact_import' or uploaded_by = auth.uid() or public.can_brand(org_id, null)));
 
 -- #4 Storage reads and deletes go through the matching files row, so its
@@ -609,6 +639,7 @@ revoke execute on function public.auth_sees(uuid, text, uuid) from public, anon,
 revoke execute on function public.import_contacts(uuid, uuid, jsonb) from public, anon, service_role;
 revoke execute on function public.notifications_for_digest(int) from public, anon, authenticated;
 revoke execute on function public.contact_guard_delete() from public, anon, authenticated, service_role;
+revoke execute on function public.companies_shared_write() from public, anon, authenticated, service_role;
 grant execute on function public.auth_sees(uuid, text, uuid) to authenticated;
 grant execute on function public.import_contacts(uuid, uuid, jsonb) to authenticated;
 grant execute on function public.notifications_for_digest(int) to service_role;

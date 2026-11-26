@@ -49,7 +49,7 @@ export default async function CompaniesPage({ params }: PageProps<"/[org]/crm/co
                   <Badge>{c.lifecycle}</Badge>
                 </td>
                 <td className="p-3 text-muted-foreground">
-                  {c.brand_ids ? c.brand_ids.map(brandName).filter(Boolean).join(", ") : "Unassigned"}
+                  {c.brand_ids ? c.brand_ids.map(brandName).filter(Boolean).join(", ") : "Shared"}
                 </td>
               </tr>
             ))}
@@ -60,7 +60,7 @@ export default async function CompaniesPage({ params }: PageProps<"/[org]/crm/co
         <Card>
           <CardTitle className="mb-3">Add a company</CardTitle>
           <ActionForm action={saveCompany} submitLabel="Create company" resetOnOk>
-            <CompanyFields orgSlug={slug} brands={ctx.brands} />
+            <CompanyFields orgSlug={slug} brands={ctx.brands} allBrands={ctx.allBrands} />
           </ActionForm>
         </Card>
       )}

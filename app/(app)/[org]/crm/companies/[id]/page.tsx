@@ -49,7 +49,13 @@ export default async function CompanyPage({ params }: PageProps<"/[org]/crm/comp
         <Card>
           <CardTitle className="mb-3">Details</CardTitle>
           <ActionForm action={saveCompany} submitLabel="Save company">
-            <CompanyFields orgSlug={slug} brands={ctx.brands} company={company} disabled={!ctx.canWrite} />
+            <CompanyFields
+              orgSlug={slug}
+              brands={ctx.brands}
+              allBrands={ctx.allBrands}
+              company={company}
+              disabled={!ctx.canWrite}
+            />
           </ActionForm>
         </Card>
         <div className="space-y-4">

@@ -2,7 +2,7 @@
 -- import dedupe, notifications, consent evidence, and missing allow/deny tests.
 begin;
 \ir _helpers.psql
-select plan(60);
+select plan(67);
 
 create function tests.form_fpd() returns uuid language sql immutable as $$ select '63000000-0000-4000-8000-000000000001'::uuid $$;
 create function tests.deal_fpd() returns uuid language sql immutable as $$ select '62000000-0000-4000-8000-000000000001'::uuid $$;
@@ -240,6 +240,32 @@ select lives_ok($$ delete from orgs where id = tests.org_other() $$, 'org delete
 select ok(not exists (select 1 from contacts where id = '71000000-0000-4000-8000-000000000009')
           and not exists (select 1 from consents where email = 'other-consent@example.test'),
   'org delete: the contact and its consents are gone');
+
+-- Round 3 (A): Shared companies are an explicit, all-brand-only choice
+select tests.act_as(tests.u_brandlimited());
+select throws_ok($$ insert into companies (org_id, name, brand_ids) values (tests.org_main(), 'BL shared attempt', null) $$,
+  '42501', 'Pick a brand for this company.', 'shared: a brand-limited user cannot create a shared company');
+select throws_ok($$ insert into companies (org_id, name, brand_ids) values (tests.org_main(), 'BL empty attempt', '{}') $$,
+  '42501', 'Pick a brand for this company.', 'shared: an empty brand list counts as shared too');
+select lives_ok($$ insert into companies (org_id, name, brand_ids) values (tests.org_main(), 'BL 369 co', array[tests.brand_369()]) $$,
+  'shared: a brand-limited user can create a company in their brand');
+select tests.reset_role();
+select tests.act_as(tests.u_owner());
+select lives_ok($$ insert into companies (id, org_id, name, brand_ids)
+                   values ('74000000-0000-4000-8000-000000000001', tests.org_main(), 'Owner shared co', null) $$,
+  'shared: an all-brand owner can create a shared company');
+select tests.reset_role();
+select tests.act_as(tests.u_brandlimited());
+select is((select count(*) from companies where id = '74000000-0000-4000-8000-000000000001'), 1::bigint, 'shared: a brand-limited user sees a shared company');
+update companies set name = 'Owner shared co (renamed)' where id = '74000000-0000-4000-8000-000000000001';
+select is((select name || '|' || coalesce(brand_ids::text, 'null') from companies where id = '74000000-0000-4000-8000-000000000001'),
+  'Owner shared co (renamed)|null', 'shared: a brand-limited user can edit a shared company and it stays shared');
+
+-- Round 3 (B): contact-import files can't be deleted by other brands
+delete from files where id = '73000000-0000-4000-8000-000000000001';
+select tests.reset_role();
+select is((select count(*) from files where id = '73000000-0000-4000-8000-000000000001'), 1::bigint,
+  'files: a brand-limited user cannot delete another user''s contact import');
 
 select * from finish();
 rollback;
