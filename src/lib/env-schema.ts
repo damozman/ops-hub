@@ -10,6 +10,9 @@ export const serverEnvSchema = z.object({
   DEPLOY_MODE: z.enum(["cloud", "lan"]).default("cloud"),
   AUDIT_IP_HASH_SALT: z.string().min(32, "AUDIT_IP_HASH_SALT must be at least 32 characters"),
   MAILER_DRIVER: z.enum(["local", "resend"]).default("local"),
+  MAILPIT_URL: z.url().default("http://127.0.0.1:54324"),
+  FORMS_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),
+  CRON_SECRET: z.string().min(32, "CRON_SECRET must be at least 32 characters").optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

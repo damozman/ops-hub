@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { generate } from "otplib";
@@ -61,4 +62,33 @@ export function localAdminClient() {
   if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url) || !key)
     throw new Error("e2e setup only runs against a local Supabase stack");
   return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** Signs in with a clean MFA state: removes the user's factors first, then enrolls if the role requires it. */
+export async function signInFresh(page: Page, email: string) {
+  const admin = localAdminClient();
+  const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
+  const user = data.users.find((u) => u.email === email);
+  if (!user) throw new Error(`No seed user ${email}`);
+  const { data: factors } = await admin.auth.admin.mfa.listFactors({ userId: user.id });
+  for (const f of factors?.factors ?? []) await admin.auth.admin.mfa.deleteFactor({ userId: user.id, id: f.id });
+  // Setup-only sign-in: mint the magic link with the local service role instead of
+  // emailing it, so repeated sign-ins don't run into GoTrue's OTP rate limits.
+  // (The emailed flow itself is covered by phase0-auth.spec.ts.)
+  const { data: link, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+  if (error || !link.properties?.hashed_token) throw error ?? new Error("generateLink returned no token");
+  await page.goto(`/auth/confirm?token_hash=${link.properties.hashed_token}&type=magiclink`);
+  await page.waitForURL(/\/(mfa|[a-z0-9-]+\/dashboard)$/);
+  if (page.url().endsWith("/mfa")) {
+    await enrollTotp(page);
+    await page.waitForURL(/\/dashboard$/);
+  }
+}
+
+/** Runs a read-only query against the LOCAL database with psql and returns the first column of the first row. */
+export function sql(query: string): string {
+  if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+  const url = process.env.SUPABASE_DB_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+  if (!/@(127\.0\.0\.1|localhost):\d+\//.test(url)) throw new Error("sql() only runs against a local database");
+  return execFileSync("psql", [url, "-At", "-v", "ON_ERROR_STOP=1", "-c", query], { encoding: "utf8" }).trim();
 }

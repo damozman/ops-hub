@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 // Refreshes the Supabase session cookie on every request and sends signed-out
 // visitors to /login. This is an optimistic check only: every page, action and
 // RLS policy checks again (see src/server/auth/session.ts).
-const PUBLIC_PATHS = ["/login", "/auth/confirm", "/auth/error"];
+const PUBLIC_PATHS = ["/login", "/auth/confirm", "/auth/error", "/f", "/api/forms", "/api/cron"];
 
 export async function proxy(request: NextRequest) {
   // One id per request, passed to server code (and from there to Postgres, so
