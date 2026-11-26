@@ -1,6 +1,7 @@
 import "server-only";
 import { requireAppUser } from "@/server/auth/session";
 import { getOrgBySlug, hasPerm } from "@/server/permissions";
+import { isAllBrands } from "@/server/brands/scope";
 import { getActiveBrand } from "@/server/brands/active-brand";
 import { getOrgPeople } from "@/server/crm/queries";
 
@@ -8,13 +9,14 @@ import { getOrgPeople } from "@/server/crm/queries";
 export async function crmContext(slug: string) {
   const session = await requireAppUser();
   const org = await getOrgBySlug(slug);
-  const [canRead, canWrite, { brands, active }, people] = await Promise.all([
+  const [canRead, canWrite, { brands, active }, people, allBrands] = await Promise.all([
     hasPerm(org.id, "crm.read"),
     hasPerm(org.id, "crm.write"),
     getActiveBrand(org.id),
     getOrgPeople(org.id),
+    isAllBrands(org.id),
   ]);
-  return { session, org, slug, canRead, canWrite, brands, active, people };
+  return { session, org, slug, canRead, canWrite, brands, active, people, allBrands };
 }
 
 export type CrmContext = Awaited<ReturnType<typeof crmContext>>;

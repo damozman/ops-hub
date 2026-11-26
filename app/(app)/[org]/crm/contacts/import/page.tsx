@@ -17,7 +17,7 @@ export default async function ImportPage({ params }: PageProps<"/[org]/crm/conta
           Rows that match an existing contact by email or phone are skipped. Files matching a protected client template
           (Settings, Import guard) are refused and never stored.
         </CardDescription>
-        <ImportFlow orgSlug={slug} brands={ctx.brands} />
+        <ImportFlow orgSlug={slug} brands={ctx.brands} allBrands={ctx.allBrands} />
       </Card>
     </div>
   );

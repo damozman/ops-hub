@@ -56,6 +56,7 @@ export default async function ContactPage({ params }: PageProps<"/[org]/crm/cont
               orgSlug={slug}
               companies={companies}
               brands={ctx.brands}
+              allBrands={ctx.allBrands}
               contact={contact}
               disabled={!ctx.canWrite}
             />

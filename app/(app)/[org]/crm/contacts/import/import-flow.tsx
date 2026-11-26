@@ -16,7 +16,15 @@ const FIELDS = [
   ["company", "Company"],
 ] as const;
 
-export function ImportFlow({ orgSlug, brands }: { orgSlug: string; brands: { id: string; name: string }[] }) {
+export function ImportFlow({
+  orgSlug,
+  brands,
+  allBrands,
+}: {
+  orgSlug: string;
+  brands: { id: string; name: string }[];
+  allBrands: boolean;
+}) {
   const [preview, previewAction, previewing] = useActionState<PreviewState, FormData>(previewImport, {
     status: "idle",
   });
@@ -48,8 +56,8 @@ export function ImportFlow({ orgSlug, brands }: { orgSlug: string; brands: { id:
           <p className="text-sm">{preview.rowCount} data rows. Match each column to a contact field:</p>
           <div className="max-w-sm space-y-1">
             <Label htmlFor="import-brand">Brand for new companies and contacts without a company</Label>
-            <Select id="import-brand" name="brand_id" defaultValue={brands.length === 1 ? brands[0].id : ""}>
-              {brands.length > 1 && <option value="">No brand (shared)</option>}
+            <Select id="import-brand" name="brand_id" defaultValue={allBrands ? "" : brands[0]?.id}>
+              {allBrands && <option value="">No brand (all-brand team only)</option>}
               {brands.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}

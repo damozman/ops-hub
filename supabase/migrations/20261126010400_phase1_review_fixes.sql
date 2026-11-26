@@ -77,34 +77,40 @@ begin
       select company_id, brand_id into r from public.contacts where id = p_id and org_id = p_org;
       if not found then return false; end if;
       if r.company_id is not null then
-        return public.crm_sees(p_user, p_org, 'company', r.company_id, p_depth + 1);
+        return coalesce(public.crm_sees(p_user, p_org, 'company', r.company_id, p_depth + 1), false);
       end if;
-      return r.brand_id = any (v_scope);
+      return coalesce(r.brand_id = any (v_scope), false);
     when 'task' then
       select brand_id, subject_type, subject_id, assignee_user_id, created_by into r
       from public.tasks where id = p_id and org_id = p_org;
       if not found then return false; end if;
-      if r.brand_id is not null then return r.brand_id = any (v_scope); end if;
+      if r.brand_id is not null then return coalesce(r.brand_id = any (v_scope), false); end if;
       if r.subject_id is not null then
-        return public.crm_sees(p_user, p_org, r.subject_type, r.subject_id, p_depth + 1);
+        return coalesce(public.crm_sees(p_user, p_org, r.subject_type, r.subject_id, p_depth + 1), false);
       end if;
-      return p_user in (r.assignee_user_id, r.created_by);
+      return coalesce(p_user = any (array[r.assignee_user_id, r.created_by]), false);
     when 'activity' then
       select subject_type, subject_id into r from public.activities where id = p_id and org_id = p_org;
-      return found and public.crm_sees(p_user, p_org, r.subject_type, r.subject_id, p_depth + 1);
+      return found and coalesce(public.crm_sees(p_user, p_org, r.subject_type, r.subject_id, p_depth + 1), false);
     when 'comment' then
       select subject_type, subject_id into r from public.comments where id = p_id and org_id = p_org;
-      return found and public.crm_sees(p_user, p_org, r.subject_type, r.subject_id, p_depth + 1);
+      return found and coalesce(public.crm_sees(p_user, p_org, r.subject_type, r.subject_id, p_depth + 1), false);
     when 'consent' then
       select contact_id into r from public.consents where id = p_id and org_id = p_org;
-      return found and r.contact_id is not null and public.crm_sees(p_user, p_org, 'contact', r.contact_id, p_depth + 1);
+      return found and r.contact_id is not null
+             and coalesce(public.crm_sees(p_user, p_org, 'contact', r.contact_id, p_depth + 1), false);
     when 'booking' then
       select brand_id, contact_id into r from public.bookings where id = p_id and org_id = p_org;
       if not found then return false; end if;
-      if r.brand_id is not null then return r.brand_id = any (v_scope); end if;
-      return r.contact_id is not null and public.crm_sees(p_user, p_org, 'contact', r.contact_id, p_depth + 1);
-    when 'file', 'import_guard' then
-      return true;  -- org-level records (contact import files, guard templates)
+      if r.brand_id is not null then return coalesce(r.brand_id = any (v_scope), false); end if;
+      return r.contact_id is not null
+             and coalesce(public.crm_sees(p_user, p_org, 'contact', r.contact_id, p_depth + 1), false);
+    when 'file' then
+      -- Contact-import CSVs hold other brands' leads: uploader and all-brand members only.
+      select kind, uploaded_by into r from public.files where id = p_id and org_id = p_org;
+      return found and (r.kind <> 'contact_import' or coalesce(r.uploaded_by = p_user, false));
+    when 'import_guard' then
+      return true;  -- org-level guard templates (headers are hidden by their own RLS)
     else
       return false;
   end case;
@@ -119,7 +125,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select auth.uid() is not null and public.crm_sees(auth.uid(), p_org, p_type, p_id);
+  select coalesce(auth.uid() is not null and public.crm_sees(auth.uid(), p_org, p_type, p_id), false);
 $$;
 
 -- contacts: company visible, or (no company) own brand.
@@ -127,6 +133,7 @@ drop policy contacts_select on public.contacts;
 drop policy contacts_insert on public.contacts;
 drop policy contacts_update on public.contacts;
 drop policy contacts_delete on public.contacts;
+revoke update on public.contacts from authenticated;
 grant update (company_id, brand_id, first_name, last_name, email, phone_e164, title, owner_user_id, tags, do_not_contact)
   on public.contacts to authenticated;
 create policy contacts_select on public.contacts for select to authenticated
@@ -251,6 +258,14 @@ revoke insert on public.files from authenticated;
 grant select, insert on public.files to service_role;
 update storage.buckets set allowed_mime_types = array['text/csv'] where id = 'org-files';
 
+-- Contact-import CSVs contain leads for whichever brands were imported, so only
+-- the uploader and all-brand members can see them (storage follows via files RLS).
+drop policy files_select on public.files;
+create policy files_select on public.files for select to authenticated
+  using (org_id in (select public.auth_org_ids()) and public.has_perm(org_id, 'crm.read')
+         and (sensitivity <> 'client_confidential' or public.has_perm(org_id, 'crm.write'))
+         and (kind <> 'contact_import' or uploaded_by = auth.uid() or public.can_brand(org_id, null)));
+
 -- #4 Storage reads and deletes go through the matching files row, so its
 -- sensitivity rule (client_confidential needs crm.write) applies to downloads too.
 drop policy org_files_select on storage.objects;
@@ -369,7 +384,7 @@ begin
   foreach v_user in array coalesce(new.mentions, '{}'::uuid[]) loop
     continue when v_user = any (v_old);
     continue when v_user = new.created_by;
-    continue when not public.crm_sees(v_user, new.org_id, new.subject_type, new.subject_id);
+    continue when not coalesce(public.crm_sees(v_user, new.org_id, new.subject_type, new.subject_id), false);
     insert into public.notifications (org_id, user_id, kind, subject_type, subject_id, payload, created_by)
     values (new.org_id, v_user, 'mention', new.subject_type, new.subject_id,
             jsonb_build_object('comment_id', new.id, 'excerpt', left(new.body_md, 200)), new.created_by);
@@ -388,7 +403,7 @@ begin
   if new.assignee_user_id is not null
      and new.assignee_user_id is distinct from auth.uid()
      and (tg_op = 'INSERT' or new.assignee_user_id is distinct from old.assignee_user_id)
-     and public.crm_sees(new.assignee_user_id, new.org_id, 'task', new.id) then
+     and coalesce(public.crm_sees(new.assignee_user_id, new.org_id, 'task', new.id), false) then
     insert into public.notifications (org_id, user_id, kind, subject_type, subject_id, payload, created_by)
     values (new.org_id, new.assignee_user_id, 'task_assigned', 'task', new.id,
             jsonb_build_object('title', new.title, 'due_at', new.due_at), auth.uid());
@@ -515,7 +530,9 @@ begin
 
   if nullif(trim(p_data ->> 'company'), '') is not null then
     select id into v_company from public.companies
-    where org_id = f.org_id and lower(name) = lower(trim(p_data ->> 'company')) limit 1;
+    where org_id = f.org_id and lower(name) = lower(trim(p_data ->> 'company'))
+      and (brand_ids is null or f.brand_id = any (brand_ids))
+    order by created_at limit 1;
     if v_company is null then
       insert into public.companies (org_id, name, brand_ids, lifecycle, source)
       values (f.org_id, trim(p_data ->> 'company'), array[f.brand_id], 'lead', 'form:' || f.name)

@@ -2,7 +2,7 @@
 -- import dedupe, notifications, consent evidence, and missing allow/deny tests.
 begin;
 \ir _helpers.psql
-select plan(49);
+select plan(60);
 
 create function tests.form_fpd() returns uuid language sql immutable as $$ select '63000000-0000-4000-8000-000000000001'::uuid $$;
 create function tests.deal_fpd() returns uuid language sql immutable as $$ select '62000000-0000-4000-8000-000000000001'::uuid $$;
@@ -192,6 +192,54 @@ select throws_ok($$ insert into bookings (org_id, contact_id, source, booking_ur
                     values (tests.org_main(), '61000000-0000-4000-8000-000000000001', 'link', 'https://book.example.test/v') $$,
   '42501', null, 'bookings: a viewer cannot add a booking');
 select tests.reset_role();
+
+
+-- ---------------------------------------------------------------------------
+-- Round 2 (A): crm_sees always returns a boolean, so NULL never lets a mention through
+-- ---------------------------------------------------------------------------
+insert into contacts (id, org_id, first_name) values ('71000000-0000-4000-8000-000000000003', tests.org_main(), 'No company, no brand');
+insert into tasks (id, org_id, title) values ('72000000-0000-4000-8000-000000000001', tests.org_main(), 'No brand, no subject, no assignee');
+select is(public.crm_sees(tests.u_brandlimited(), tests.org_main(), 'contact', '71000000-0000-4000-8000-000000000003'), false,
+  'crm_sees: false (not null) for a brandless contact without a company');
+select is(public.crm_sees(tests.u_brandlimited(), tests.org_main(), 'task', '72000000-0000-4000-8000-000000000001'), false,
+  'crm_sees: false (not null) for a brandless, subjectless, unassigned task');
+select tests.act_as(tests.u_owner());
+insert into comments (org_id, subject_type, subject_id, body_md, mentions, created_by) values
+  (tests.org_main(), 'contact', '71000000-0000-4000-8000-000000000003', 'secret contact', array[tests.u_brandlimited()], tests.u_owner()),
+  (tests.org_main(), 'task', '72000000-0000-4000-8000-000000000001', 'secret task', array[tests.u_brandlimited()], tests.u_owner());
+select tests.reset_role();
+select is((select count(*) from notifications where user_id = tests.u_brandlimited() and kind = 'mention'), 0::bigint,
+  'notify: no mention on a brandless contact or brandless task for a brand-limited user');
+
+-- Round 2 (B): contact-import CSVs are visible to the uploader and all-brand members only
+insert into files (id, org_id, path, mime, kind, uploaded_by) values
+  ('73000000-0000-4000-8000-000000000001', tests.org_main(), tests.org_main() || '/imports/owner-import.csv', 'text/csv', 'contact_import', tests.u_owner());
+insert into storage.objects (bucket_id, name) values ('org-files', tests.org_main() || '/imports/owner-import.csv');
+select tests.act_as(tests.u_brandlimited());
+select is((select count(*) from files where id = '73000000-0000-4000-8000-000000000001'), 0::bigint, 'files: a 369 user cannot see another user''s contact import');
+select is((select count(*) from storage.objects where name like '%/imports/owner-import.csv'), 0::bigint, 'storage: a 369 user cannot download another user''s contact import');
+select is((select count(*) from events where subject_type = 'file' and subject_id = '73000000-0000-4000-8000-000000000001'), 0::bigint,
+  'events: a 369 user cannot see events for another user''s contact import');
+select tests.reset_role();
+select tests.act_as(tests.u_owner());
+select is((select count(*) from files where id = '73000000-0000-4000-8000-000000000001'), 1::bigint, 'files: the owner sees the contact import');
+select is((select count(*) from storage.objects where name like '%/imports/owner-import.csv'), 1::bigint, 'storage: the owner can download the contact import');
+select tests.reset_role();
+
+-- Round 2 (F): contacts are updatable only through the listed columns
+select tests.act_as(tests.u_owner());
+select throws_ok($$ update contacts set org_id = tests.org_other() where id = '61000000-0000-4000-8000-000000000001' $$,
+  '42501', null, 'contacts: org_id cannot be updated by users');
+select tests.reset_role();
+
+-- Round 2 (G): an org whose contact has consents can still be deleted (cascade)
+insert into contacts (id, org_id, first_name, email) values ('71000000-0000-4000-8000-000000000009', tests.org_other(), 'Other', 'other-consent@example.test');
+insert into consents (org_id, contact_id, email, channel, purpose, status, method)
+values (tests.org_other(), '71000000-0000-4000-8000-000000000009', 'other-consent@example.test', 'email', 'marketing', 'granted', 'test');
+select lives_ok($$ delete from orgs where id = tests.org_other() $$, 'org delete: succeeds with a contact that has consents');
+select ok(not exists (select 1 from contacts where id = '71000000-0000-4000-8000-000000000009')
+          and not exists (select 1 from consents where email = 'other-consent@example.test'),
+  'org delete: the contact and its consents are gone');
 
 select * from finish();
 rollback;

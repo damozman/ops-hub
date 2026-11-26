@@ -211,6 +211,12 @@ test("contact CSV import: a file matching the import-guard template is refused a
   ).toBeGreaterThan(0);
   expect(sql(`select count(*) from files where org_id = '${MAIN_ORG}' and path like '%catalog%'`)).toBe("0");
 
+  // Over the row cap: refused at upload, before anything is stored.
+  const big = ["Email", ...Array.from({ length: 5001 }, (_, i) => `big-${i}@example.test`)].join("\n");
+  await page.getByLabel(/CSV file/).setInputFiles({ name: "big.csv", mimeType: "text/csv", buffer: Buffer.from(big) });
+  await page.getByRole("button", { name: "Upload and preview" }).click();
+  await expect(page.getByText("Imports are limited to 5,000 rows per file.")).toBeVisible();
+
   const stamp = Date.now();
   const normal = [
     "First Name,Last Name,Email,Phone,Company",

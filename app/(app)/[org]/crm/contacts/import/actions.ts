@@ -12,6 +12,7 @@ import { CONTACT_FIELDS, guessMapping, parseCsv, type ContactField } from "@/lib
 import { mapRows } from "@/lib/contact-import";
 
 const MAX_BYTES = 2 * 1024 * 1024;
+const MAX_ROWS = 5000; // same cap as public.import_contacts
 
 export type PreviewState =
   | { status: "idle" }
@@ -66,11 +67,12 @@ export async function previewImport(_prev: PreviewState, formData: FormData): Pr
   const bytes = Buffer.from(await file.arrayBuffer());
   let rows: string[][];
   try {
-    rows = parseCsv(bytes.toString("utf8"));
+    rows = parseCsv(bytes.toString("utf8"), 200_000); // 2 MB cap bounds this; the row cap is checked below
   } catch (e) {
     return { status: "error", message: e instanceof Error ? e.message : "Could not read the CSV." };
   }
   if (rows.length < 2) return { status: "error", message: "The CSV needs a header row and at least one data row." };
+  if (rows.length - 1 > MAX_ROWS) return { status: "error", message: "Imports are limited to 5,000 rows per file." };
   const headers = rows[0].map((h) => h.trim());
 
   const matched = await guardMatch(supabase, org.id, headers);
@@ -144,7 +146,7 @@ export async function runImport(_prev: ImportState, formData: FormData): Promise
   if (!f || f.kind !== "contact_import") return { status: "error", message: "Upload the file again." };
   const dl = await supabase.storage.from("org-files").download(f.path);
   if (dl.error || !dl.data) return { status: "error", message: "Could not read the stored file." };
-  const rows = parseCsv(await dl.data.text());
+  const rows = parseCsv(await dl.data.text(), MAX_ROWS + 1);
   const headers = rows[0].map((h) => h.trim());
   // Defense in depth: re-check in case a template was added since the preview.
   if (await guardMatch(supabase, org.id, headers))

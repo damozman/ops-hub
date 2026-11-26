@@ -10,6 +10,7 @@ import { dbFail, fail, ok, optStr, str, type ActionState } from "@/server/crm/ac
 import { extractMentions } from "@/lib/mentions";
 import { normalizePhone } from "@/lib/csv";
 import { zonedTimeToUtc } from "@/lib/time";
+import { isAllBrands } from "@/server/brands/scope";
 
 // Every action: signed-in + MFA, org membership (404 otherwise), permission check
 // here, and the same check again in RLS. Database triggers write audit_log and events.
@@ -109,6 +110,8 @@ export async function saveContact(_prev: ActionState, formData: FormData): Promi
   const visibleBrands = (await getVisibleBrands(org.id)).map((b) => b.id);
   const brandId = optStr(formData.get("brand_id"));
   if (brandId && !visibleBrands.includes(brandId)) return fail("Pick one of your brands.");
+  if (!companyId && !brandId && !(await isAllBrands(org.id)))
+    return fail("Pick a brand for a contact without a company.");
   const row = {
     first_name: parsed.data.first_name || null,
     last_name: parsed.data.last_name || null,

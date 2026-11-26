@@ -16,12 +16,15 @@ export function ContactFields({
   orgSlug,
   companies,
   brands,
+  allBrands,
   contact = {},
   disabled = false,
 }: {
   orgSlug: string;
   companies: { id: string; name: string }[];
   brands: { id: string; name: string }[];
+  /** True when the user sees every brand (only they may leave a company-less contact without a brand). */
+  allBrands: boolean;
   contact?: Contact;
   disabled?: boolean;
 }) {
@@ -60,12 +63,8 @@ export function ContactFields({
         </div>
         <div className="space-y-1">
           <Label htmlFor={`${p}-brand`}>Brand (used when there is no company)</Label>
-          <Select
-            id={`${p}-brand`}
-            name="brand_id"
-            defaultValue={contact.brand_id ?? (brands.length === 1 ? brands[0].id : "")}
-          >
-            {brands.length > 1 && <option value="">All brands</option>}
+          <Select id={`${p}-brand`} name="brand_id" defaultValue={contact.brand_id ?? (allBrands ? "" : brands[0]?.id)}>
+            {allBrands && <option value="">No brand (all-brand team only)</option>}
             {brands.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}

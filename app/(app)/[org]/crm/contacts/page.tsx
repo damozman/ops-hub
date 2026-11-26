@@ -63,7 +63,7 @@ export default async function ContactsPage({ params }: PageProps<"/[org]/crm/con
         <Card>
           <CardTitle className="mb-3">Add a contact</CardTitle>
           <ActionForm action={saveContact} submitLabel="Create contact" resetOnOk>
-            <ContactFields orgSlug={slug} companies={companies} brands={ctx.brands} />
+            <ContactFields orgSlug={slug} companies={companies} brands={ctx.brands} allBrands={ctx.allBrands} />
           </ActionForm>
         </Card>
       )}
