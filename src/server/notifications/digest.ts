@@ -26,13 +26,8 @@ export function digestLine(n: Pick<Row, "kind" | "payload">): string {
  */
 export async function sendNotificationDigest(mailer: Mailer = getMailer()) {
   const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from("notifications")
-    .select("id, user_id, org_id, kind, payload, created_at")
-    .is("read_at", null)
-    .is("digested_at", null)
-    .order("created_at")
-    .limit(5000);
+  // Only notifications whose recipient is still an active internal member who can see the record.
+  const { data, error } = await admin.rpc("notifications_for_digest", { p_limit: 5000 });
   if (error) throw new Error(`digest query failed (${error.code})`);
   const byUser = new Map<string, Row[]>();
   for (const n of (data ?? []) as Row[]) byUser.set(n.user_id, [...(byUser.get(n.user_id) ?? []), n]);

@@ -8,17 +8,20 @@ type Contact = {
   phone_e164?: string | null;
   title?: string | null;
   company_id?: string | null;
+  brand_id?: string | null;
   do_not_contact?: boolean;
 };
 
 export function ContactFields({
   orgSlug,
   companies,
+  brands,
   contact = {},
   disabled = false,
 }: {
   orgSlug: string;
   companies: { id: string; name: string }[];
+  brands: { id: string; name: string }[];
   contact?: Contact;
   disabled?: boolean;
 }) {
@@ -51,6 +54,21 @@ export function ContactFields({
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${p}-brand`}>Brand (used when there is no company)</Label>
+          <Select
+            id={`${p}-brand`}
+            name="brand_id"
+            defaultValue={contact.brand_id ?? (brands.length === 1 ? brands[0].id : "")}
+          >
+            {brands.length > 1 && <option value="">All brands</option>}
+            {brands.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
               </option>
             ))}
           </Select>

@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAppUser } from "@/server/auth/session";
 import { createSupabaseServerClient } from "@/server/db/server-client";
-import { getOrgBySlug, hasPerm } from "@/server/permissions";
+import { createSupabaseAdminClient } from "@/server/db/admin-client";
+import { getOrgBySlug, getVisibleBrands, hasPerm } from "@/server/permissions";
 import { appAudit } from "@/server/audit";
 import { CONTACT_FIELDS, guessMapping, parseCsv, type ContactField } from "@/lib/csv";
-import { planImport } from "@/lib/contact-import";
+import { mapRows } from "@/lib/contact-import";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
@@ -93,10 +94,13 @@ export async function previewImport(_prev: PreviewState, formData: FormData): Pr
     };
   }
 
+  // Users can't write to storage or files directly (RLS); the server stores the file
+  // with the service role, only after the permission and import-guard checks above.
+  const admin = createSupabaseAdminClient();
   const path = `${org.id}/imports/${randomUUID()}.csv`;
-  const up = await supabase.storage.from("org-files").upload(path, bytes, { contentType: "text/csv", upsert: false });
+  const up = await admin.storage.from("org-files").upload(path, bytes, { contentType: "text/csv", upsert: false });
   if (up.error) return { status: "error", message: "Could not store the file. Nothing was imported." };
-  const fileRow = await supabase
+  const fileRow = await admin
     .from("files")
     .insert({
       org_id: org.id,
@@ -108,6 +112,7 @@ export async function previewImport(_prev: PreviewState, formData: FormData): Pr
       kind: "contact_import",
       sensitivity: "internal",
       uploaded_by: session.userId,
+      created_by: session.userId,
     })
     .select("id")
     .single();
@@ -153,50 +158,33 @@ export async function runImport(_prev: ImportState, formData: FormData): Promise
   if (!Object.values(mapping).some((v) => v === "email" || v === "phone"))
     return { status: "error", message: "Map at least an email or phone column." };
 
-  const { data: existing } = await supabase.from("contacts").select("email, phone_e164").eq("org_id", org.id);
-  const plan = planImport(rows.slice(1), headers, mapping, existing ?? []);
+  const brandId = String(formData.get("brand_id") ?? "") || null;
+  if (brandId && !(await getVisibleBrands(org.id)).some((b) => b.id === brandId))
+    return { status: "error", message: "Pick one of your brands." };
 
-  // Link or create companies by name.
-  const names = [...new Set(plan.toInsert.map((r) => r.company).filter(Boolean) as string[])];
-  const companyIds = new Map<string, string>();
-  if (names.length) {
-    const { data: companies } = await supabase.from("companies").select("id, name").eq("org_id", org.id);
-    for (const c of companies ?? []) companyIds.set(c.name.toLowerCase(), c.id);
-    const missing = names.filter((n) => !companyIds.has(n.toLowerCase()));
-    if (missing.length) {
-      const { data: created, error } = await supabase
-        .from("companies")
-        .insert(missing.map((name) => ({ org_id: org.id, name: name.slice(0, 200), source: "import" })))
-        .select("id, name");
-      if (error) return { status: "error", message: "Could not create companies. Nothing was imported." };
-      for (const c of created ?? []) companyIds.set(c.name.toLowerCase(), c.id);
-    }
+  // Dedupe (email/phone, within the file and against every contact in the org)
+  // and company lookup happen in the database, in one call.
+  const { data: result, error } = await supabase.rpc("import_contacts", {
+    p_org: org.id,
+    p_brand: brandId as string,
+    p_rows: mapRows(rows.slice(1), headers, mapping),
+  });
+  if (error) {
+    if (error.code === "22023" || error.code === "42501") return { status: "error", message: error.message };
+    console.error("import_contacts failed", error.code);
+    return { status: "error", message: "Import failed. Nothing was imported." };
   }
-
-  if (plan.toInsert.length) {
-    const { error } = await supabase.from("contacts").insert(
-      plan.toInsert.map((r) => ({
-        org_id: org.id,
-        first_name: r.first_name,
-        last_name: r.last_name,
-        email: r.email,
-        phone_e164: r.phone_e164,
-        title: r.title,
-        company_id: r.company ? (companyIds.get(r.company.toLowerCase()) ?? null) : null,
-      })),
-    );
-    if (error) return { status: "error", message: "Import failed. Nothing was imported." };
-  }
+  const plan = result as { imported: number; duplicates: number; invalid: number };
   await appAudit({
     orgId: org.id,
     action: "app.import.completed",
     subjectType: "files",
     subjectId: fileId,
-    after: { imported: plan.toInsert.length, duplicates: plan.duplicates, skipped: plan.invalid },
+    after: { imported: plan.imported, duplicates: plan.duplicates, skipped: plan.invalid },
   });
   revalidatePath(`/${org.slug}/crm`, "layout");
   return {
     status: "ok",
-    message: `Imported ${plan.toInsert.length} contact${plan.toInsert.length === 1 ? "" : "s"}. Skipped ${plan.duplicates} duplicate${plan.duplicates === 1 ? "" : "s"} and ${plan.invalid} row${plan.invalid === 1 ? "" : "s"} without an email or phone.`,
+    message: `Imported ${plan.imported} contact${plan.imported === 1 ? "" : "s"}. Skipped ${plan.duplicates} duplicate${plan.duplicates === 1 ? "" : "s"} and ${plan.invalid} row${plan.invalid === 1 ? "" : "s"} without an email or phone.`,
   };
 }

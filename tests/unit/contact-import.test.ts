@@ -1,24 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { planImport } from "@/lib/contact-import";
+import { mapRows } from "@/lib/contact-import";
 
-const headers = ["First", "Email", "Phone", "Company"];
-const mapping = { First: "first_name", Email: "email", Phone: "phone", Company: "company" } as const;
-
-describe("planImport", () => {
-  it("dedupes by email and phone, within the file and against existing contacts", () => {
-    const rows = [
-      ["Ana", "ana@example.test", "", "Acme (fictional)"],
-      ["Ana again", "ANA@example.test", "", ""],
-      ["Bo", "", "(817) 555-0199", ""],
-      ["Bo dup", "bo@example.test", "817-555-0199", ""],
-      ["Existing", "dana@lonestar.example.test", "", ""],
-      ["Nobody", "not-an-email", "", ""],
-    ];
-    const plan = planImport(rows, headers, mapping, [{ email: "dana@lonestar.example.test", phone_e164: null }]);
-    expect(plan.toInsert.map((r) => r.first_name)).toEqual(["Ana", "Bo"]);
-    expect(plan.toInsert[1].phone_e164).toBe("+18175550199");
-    expect(plan.toInsert[0].company).toBe("Acme (fictional)");
-    expect(plan.duplicates).toBe(3);
-    expect(plan.invalid).toBe(1);
+describe("mapRows", () => {
+  it("maps columns to contact fields and drops ignored or empty cells", () => {
+    const headers = ["First", "Email", "Notes", "Phone"];
+    const mapping = { First: "first_name", Email: "email", Notes: "", Phone: "phone" } as const;
+    expect(mapRows([["Ana", "ana@example.test", "skip me", ""]], headers, mapping)).toEqual([
+      { first_name: "Ana", email: "ana@example.test" },
+    ]);
+  });
+  it("keeps the first column when two map to the same field", () => {
+    const headers = ["Email", "Work email"];
+    const mapping = { Email: "email", "Work email": "email" } as const;
+    expect(mapRows([["a@example.test", "b@example.test"]], headers, mapping)).toEqual([{ email: "a@example.test" }]);
   });
 });

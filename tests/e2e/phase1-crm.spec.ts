@@ -56,6 +56,17 @@ test("form submit creates contact, deal, task, notification and events within 5 
   );
 });
 
+test("a phone typed as (555) 123-4567 on the public form keeps the lead, stored as E.164", async ({ page }) => {
+  const name = `Phone${Date.now()}`;
+  await page.goto(`/f/${FPD_FORM}`);
+  await page.getByLabel("First name", { exact: true }).fill(name);
+  await page.getByLabel("Phone", { exact: true }).fill("(555) 123-4567");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("We got your request")).toBeVisible();
+  expect(sql(`select phone_e164 from contacts where phone_e164 = '+15551234567' limit 1`)).toBe("+15551234567");
+  expect(Number(sql(`select count(*) from deals where title like 'Lead: ${name}%'`))).toBe(1);
+});
+
 test("no consent means no consents row; honeypot is rejected; the 11th submit in a minute is rate-limited", async ({
   page,
   request,

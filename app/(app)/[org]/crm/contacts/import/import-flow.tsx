@@ -16,7 +16,7 @@ const FIELDS = [
   ["company", "Company"],
 ] as const;
 
-export function ImportFlow({ orgSlug }: { orgSlug: string }) {
+export function ImportFlow({ orgSlug, brands }: { orgSlug: string; brands: { id: string; name: string }[] }) {
   const [preview, previewAction, previewing] = useActionState<PreviewState, FormData>(previewImport, {
     status: "idle",
   });
@@ -46,6 +46,17 @@ export function ImportFlow({ orgSlug }: { orgSlug: string }) {
           <input type="hidden" name="org" value={orgSlug} />
           <input type="hidden" name="file_id" value={preview.fileId} />
           <p className="text-sm">{preview.rowCount} data rows. Match each column to a contact field:</p>
+          <div className="max-w-sm space-y-1">
+            <Label htmlFor="import-brand">Brand for new companies and contacts without a company</Label>
+            <Select id="import-brand" name="brand_id" defaultValue={brands.length === 1 ? brands[0].id : ""}>
+              {brands.length > 1 && <option value="">No brand (shared)</option>}
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="overflow-x-auto">
             <table className="text-sm">
               <thead>

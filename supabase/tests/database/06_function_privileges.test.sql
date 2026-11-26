@@ -10,7 +10,9 @@ select set_eq(
   array['accept_my_invites', 'app_audit', 'auth_org_ids', 'auth_requires_mfa', 'auth_role', 'brand_ids_within_caller',
         'can_brand', 'has_perm',
         -- Phase 1
-        'can_any_brand', 'import_guard_match'],
+        'can_any_brand', 'import_guard_match',
+        -- Phase 1 review fixes
+        'auth_sees', 'import_contacts'],
   'authenticated can execute only the allow-listed SECURITY DEFINER functions');
 
 select is(
@@ -21,7 +23,7 @@ select is(
 select set_eq(
   $$ select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public' and p.prosecdef and has_function_privilege('service_role', p.oid, 'execute') $$,
-  array['submit_form', 'public_form', 'mark_notifications_digested'],
+  array['submit_form', 'public_form', 'mark_notifications_digested', 'notifications_for_digest'],
   'service_role can execute only the server-job functions (lead form intake, notification digest)');
 
 -- New functions start closed: one created after the migrations (as the role that

@@ -9,6 +9,7 @@ import { getOrgPeople } from "@/server/crm/queries";
 import { dbFail, fail, ok, optStr, str, type ActionState } from "@/server/crm/action-utils";
 import { extractMentions } from "@/lib/mentions";
 import { normalizePhone } from "@/lib/csv";
+import { zonedTimeToUtc } from "@/lib/time";
 
 // Every action: signed-in + MFA, org membership (404 otherwise), permission check
 // here, and the same check again in RLS. Database triggers write audit_log and events.
@@ -104,6 +105,10 @@ export async function saveContact(_prev: ActionState, formData: FormData): Promi
   if (parsed.data.phone && !phone) return fail("Enter the phone as 10 digits or +country format.");
   const companyId = optStr(formData.get("company_id"));
   if (companyId && !uuid.safeParse(companyId).success) return fail("Bad company.");
+  // Contacts without a company belong to a brand (brand-limited users only see their brands' contacts).
+  const visibleBrands = (await getVisibleBrands(org.id)).map((b) => b.id);
+  const brandId = optStr(formData.get("brand_id"));
+  if (brandId && !visibleBrands.includes(brandId)) return fail("Pick one of your brands.");
   const row = {
     first_name: parsed.data.first_name || null,
     last_name: parsed.data.last_name || null,
@@ -111,6 +116,7 @@ export async function saveContact(_prev: ActionState, formData: FormData): Promi
     phone_e164: phone,
     title: parsed.data.title || null,
     company_id: companyId,
+    brand_id: companyId ? null : brandId,
     do_not_contact: formData.get("do_not_contact") === "on",
   };
   if (!row.first_name && !row.last_name && !row.email && !row.phone_e164)
@@ -263,7 +269,8 @@ export async function createTask(_prev: ActionState, formData: FormData): Promis
         title: d.title,
         body: d.body || null,
         assignee_user_id: d.assignee || null,
-        due_at: d.due ? new Date(`${d.due}T17:00:00-06:00`).toISOString() : null,
+        // Due at 5 PM Central on the chosen day (DST-aware).
+        due_at: d.due ? (zonedTimeToUtc(`${d.due}T17:00`)?.toISOString() ?? null) : null,
         priority: d.priority,
         recurring_rule: d.recurring_rule || null,
         subject_type: d.subject_type || null,
@@ -374,7 +381,7 @@ export async function addBookingLink(_prev: ActionState, formData: FormData): Pr
         contact_id: parsed.data.contact_id,
         source: "link",
         booking_url: parsed.data.booking_url,
-        starts_at: parsed.data.starts_at ? new Date(`${parsed.data.starts_at}:00-06:00`).toISOString() : null,
+        starts_at: parsed.data.starts_at ? (zonedTimeToUtc(parsed.data.starts_at)?.toISOString() ?? null) : null,
         notes: parsed.data.notes || null,
       })
     ).error,

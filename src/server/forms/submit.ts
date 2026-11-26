@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createSupabaseAdminClient } from "@/server/db/admin-client";
 import { serverEnv } from "@/server/config/env";
 import { hashIp } from "@/server/audit";
+import { normalizePhone } from "@/lib/csv";
 
 export const formInputSchema = z.object({
   first_name: z.string().trim().max(100).default(""),
@@ -35,15 +36,21 @@ export async function submitPublicForm(params: {
     email: (params.fields.email ?? "").trim().toLowerCase(),
   });
   if (!parsed.success) return { ok: false, reason: "invalid", message: "Check your email address and try again." };
-  if (!parsed.data.email && !parsed.data.phone)
+  // Store phones as E.164. A phone we can't read is dropped when there's an email, else it's an error.
+  const phone = parsed.data.phone ? normalizePhone(parsed.data.phone) : null;
+  if (parsed.data.phone && !phone && !parsed.data.email)
+    return { ok: false, reason: "invalid", message: "Check your phone number (10 digits, or +country code)." };
+  const input = { ...parsed.data, phone: phone ?? "" };
+  if (!input.email && !input.phone)
     return { ok: false, reason: "invalid", message: "Give us an email or phone number." };
 
   const env = serverEnv();
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin.rpc("submit_form", {
     p_form_id: params.formId,
-    p_data: parsed.data,
-    p_ip_hash: hashIp(params.ip, env.AUDIT_IP_HASH_SALT) as string,
+    p_data: input,
+    // Unknown IPs share one rate-limit bucket rather than skipping the limit.
+    p_ip_hash: hashIp(params.ip ?? "unknown-ip", env.AUDIT_IP_HASH_SALT) as string,
     p_consent: params.consent,
     p_honeypot: params.honeypot,
     p_rate_limit_per_min: env.FORMS_RATE_LIMIT_PER_MIN,

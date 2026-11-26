@@ -6,7 +6,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 const ERRORS: Record<string, string> = {
-  invalid: "Please give us a valid email or phone number.",
+  invalid: "Please give us a valid email, or a phone number with 10 digits (or +country code).",
   spam: "Your submission was rejected.",
   rate_limited: "Too many submissions from your connection. Please try again in a minute.",
   error: "Something went wrong. Please try again.",

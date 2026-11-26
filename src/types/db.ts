@@ -485,6 +485,7 @@ export type Database = {
       };
       contacts: {
         Row: {
+          brand_id: string | null;
           company_id: string | null;
           created_at: string;
           created_by: string | null;
@@ -502,6 +503,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          brand_id?: string | null;
           company_id?: string | null;
           created_at?: string;
           created_by?: string | null;
@@ -518,6 +520,7 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          brand_id?: string | null;
           company_id?: string | null;
           created_at?: string;
           created_by?: string | null;
@@ -534,6 +537,13 @@ export type Database = {
           updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "contacts_brand_fk";
+            columns: ["org_id", "brand_id"];
+            isOneToOne: false;
+            referencedRelation: "brands";
+            referencedColumns: ["org_id", "id"];
+          },
           {
             foreignKeyName: "contacts_company_id_fkey";
             columns: ["company_id"];
@@ -1365,17 +1375,35 @@ export type Database = {
       auth_org_ids: { Args: Record<PropertyKey, never>; Returns: string[] };
       auth_requires_mfa: { Args: Record<PropertyKey, never>; Returns: boolean };
       auth_role: { Args: { p_org: string }; Returns: string };
+      auth_sees: { Args: { p_id: string; p_org: string; p_type: string }; Returns: boolean };
       brand_ids_within_caller: { Args: { p_brand_ids: string[]; p_org: string }; Returns: boolean };
       can_any_brand: { Args: { p_brand_ids: string[]; p_org: string }; Returns: boolean };
       can_brand: { Args: { p_brand: string; p_org: string }; Returns: boolean };
+      crm_sees: {
+        Args: { p_depth?: number; p_id: string; p_org: string; p_type: string; p_user: string };
+        Returns: boolean;
+      };
       cross_sell_check: { Args: { p_company: string }; Returns: number };
       emit_event: {
         Args: { p_org: string; p_payload?: Json; p_subject_id: string; p_subject_type: string; p_type: string };
         Returns: string;
       };
       has_perm: { Args: { p_org: string; p_perm: string }; Returns: boolean };
+      import_contacts: { Args: { p_brand: string; p_org: string; p_rows: Json }; Returns: Json };
       import_guard_match: { Args: { p_headers: string[]; p_org: string }; Returns: string };
       mark_notifications_digested: { Args: { p_ids: string[] }; Returns: number };
+      normalize_phone: { Args: { p_raw: string }; Returns: string };
+      notifications_for_digest: {
+        Args: { p_limit?: number };
+        Returns: {
+          created_at: string;
+          id: string;
+          kind: string;
+          org_id: string;
+          payload: Json;
+          user_id: string;
+        }[];
+      };
       org_owner_id: { Args: { p_org: string }; Returns: string };
       public_form: { Args: { p_form_id: string }; Returns: Json };
       role_requires_mfa: { Args: { p_role: string }; Returns: boolean };
