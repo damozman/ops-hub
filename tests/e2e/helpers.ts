@@ -1,11 +1,13 @@
 import { expect, type Page } from "@playwright/test";
+import { existsSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
 import { generate } from "otplib";
 
 const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
 
 type MailpitSummary = { ID: string; To: { Address: string }[]; Created: string };
 
-async function latestMessageFor(email: string, after: number): Promise<string> {
+export async function latestMessageFor(email: string, after: number): Promise<string> {
   for (let i = 0; i < 40; i++) {
     const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${email}"`)}`);
     const body = (await res.json()) as { messages: MailpitSummary[] };
@@ -15,7 +17,7 @@ async function latestMessageFor(email: string, after: number): Promise<string> {
         Text: string;
         HTML: string;
       };
-      const match = (full.HTML + full.Text).match(/https?:\/\/[^\s"'<>]+\/auth\/v1\/verify[^\s"'<>]+/);
+      const match = (full.HTML + full.Text).match(/https?:\/\/[^\s"'<>]+\/auth\/(?:v1\/verify|confirm)[^\s"'<>]+/);
       if (match) return match[0].replace(/&amp;/g, "&");
     }
     await new Promise((r) => setTimeout(r, 250));
@@ -42,4 +44,21 @@ export async function enrollTotp(page: Page): Promise<string> {
   await page.getByLabel("6-digit code").fill(await generate({ secret }));
   await page.getByRole("button", { name: "Verify and continue" }).click();
   return secret;
+}
+
+/** Number of mail-catcher messages to an address since a time. */
+export async function mailCountFor(email: string, after: number): Promise<number> {
+  const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${email}"`)}`);
+  const body = (await res.json()) as { messages: MailpitSummary[] };
+  return body.messages.filter((m) => new Date(m.Created).getTime() >= after - 2000).length;
+}
+
+/** Service-role client for test setup. Refuses anything but a local Supabase stack. */
+export function localAdminClient() {
+  if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url) || !key)
+    throw new Error("e2e setup only runs against a local Supabase stack");
+  return createClient(url, key, { auth: { persistSession: false } });
 }

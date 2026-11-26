@@ -22,6 +22,13 @@ Needs Node 22+, Docker Desktop, and Git. The Supabase CLI comes from `devDepende
 7. Enter a seed email, then open the sign-in link from the local mail catcher at http://127.0.0.1:54324
 8. Owners, admins and operators set up an authenticator app on first sign-in
 
+## Hosted Supabase settings (when we deploy)
+
+`supabase/config.jsonc` only configures the local stack. The hosted project needs the same auth settings by hand:
+signups off, magic-link expiry 900 s, session time-box 12 h, TOTP MFA on, Site URL = `APP_BASE_URL`, and the
+**Invite user** email template from `supabase/templates/invite.html` (its link must go to
+`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite`, because admin invites don't use PKCE).
+
 ## Checks
 
 | Command             | What it runs                                                             |

@@ -124,15 +124,7 @@ export type Database = {
           subject_type?: string;
           user_agent?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "audit_log_org_id_fkey";
-            columns: ["org_id"];
-            isOneToOne: false;
-            referencedRelation: "orgs";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       brands: {
         Row: {
@@ -360,6 +352,7 @@ export type Database = {
       };
       audit_actor_kind: { Args: Record<PropertyKey, never>; Returns: string };
       audit_request_header: { Args: { p_name: string }; Returns: string };
+      audit_request_id: { Args: Record<PropertyKey, never>; Returns: string };
       auth_is_aal2: { Args: Record<PropertyKey, never>; Returns: boolean };
       auth_membership: {
         Args: { p_org: string };
@@ -384,6 +377,7 @@ export type Database = {
       auth_org_ids: { Args: Record<PropertyKey, never>; Returns: string[] };
       auth_requires_mfa: { Args: Record<PropertyKey, never>; Returns: boolean };
       auth_role: { Args: { p_org: string }; Returns: string };
+      brand_ids_within_caller: { Args: { p_brand_ids: string[]; p_org: string }; Returns: boolean };
       can_brand: { Args: { p_brand: string; p_org: string }; Returns: boolean };
       has_perm: { Args: { p_org: string; p_perm: string }; Returns: boolean };
       role_requires_mfa: { Args: { p_role: string }; Returns: boolean };

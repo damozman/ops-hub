@@ -1,5 +1,5 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/types/db";
 
@@ -9,10 +9,13 @@ import type { Database } from "@/types/db";
  */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
+  const requestId = (await headers()).get("x-request-id");
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // PostgREST exposes request headers to SQL; audit_row() records this id.
+      global: { headers: requestId ? { "x-request-id": requestId } : {} },
       cookies: {
         getAll() {
           return cookieStore.getAll();
