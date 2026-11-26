@@ -56,9 +56,8 @@ jobs:
 
       - name: Generated types are up to date
         run: |
-          npx supabase gen types typescript > /tmp/db.ts
-          npx prettier --write /tmp/db.ts > /dev/null
-          diff -u src/types/db.ts /tmp/db.ts || (echo "src/types/db.ts is stale: run npm run db:types" && exit 1)
+          npm run db:types
+          git diff --exit-code src/types/db.ts || (echo "src/types/db.ts is stale: run npm run db:types" && exit 1)
 
       - name: Write .env.local for the test build
         run: |
