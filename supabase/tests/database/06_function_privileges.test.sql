@@ -15,7 +15,9 @@ select set_eq(
         'auth_sees', 'import_contacts',
         -- Phase 2 (each checks permission + brand itself)
         'auth_sees_job', 'set_checklist_item', 'override_check_result', 'job_gates', 'transition_job',
-        'approve_subject', 'release_outbox', 'cancel_outbox'],
+        'approve_subject', 'release_outbox', 'cancel_outbox',
+        -- Phase 2 review fixes
+        'set_job_flags'],
   'authenticated can execute only the allow-listed SECURITY DEFINER functions');
 
 select is(

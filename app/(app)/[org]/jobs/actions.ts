@@ -134,12 +134,21 @@ export async function createJob(_prev: ActionState, formData: FormData): Promise
       assignee_user_id: id(formData, "assignee_user_id"),
       reviewer_user_id: id(formData, "reviewer_user_id"),
       due_at: dueAt(formData),
-      requires_client_approval: formData.get("requires_client_approval") === "on",
     })
     .select("id")
     .single();
   const f = jobFail(error);
   if (f) return f;
+  // Flags go through set_job_flags (owner/admin only); the form shows the box only to those roles.
+  if (formData.get("requires_client_approval") === "on") {
+    const { error: flagError } = await supabase.rpc("set_job_flags", {
+      p_job: data!.id,
+      p_requires_client_approval: true,
+      p_reason: "Set when the job was created",
+    });
+    const ff = jobFail(flagError);
+    if (ff) return ff;
+  }
   refresh(org.slug);
   redirect(`/${org.slug}/jobs/${data!.id}`);
 }
@@ -162,8 +171,6 @@ export async function updateJob(_prev: ActionState, formData: FormData): Promise
       reviewer_user_id: id(formData, "reviewer_user_id"),
       due_at: dueAt(formData),
       scope,
-      requires_client_approval: formData.get("requires_client_approval") === "on",
-      subscription_active: formData.get("subscription_active") === "on",
     })
     .eq("id", jobId)
     .eq("org_id", org.id);
@@ -171,6 +178,25 @@ export async function updateJob(_prev: ActionState, formData: FormData): Promise
   if (f) return f;
   refresh(org.slug);
   return ok("Job saved.");
+}
+
+/** Owner-only flags: upkeep subscription (owner) and client approval (owner or admin). A reason is required. */
+export async function setJobFlags(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { org, allowed, supabase } = await ctx(formData, "jobs.write");
+  if (!allowed || !["owner", "admin"].includes(org.role ?? "")) return fail("Only an owner or admin can change these.");
+  const jobId = id(formData, "job_id");
+  if (!jobId) return fail("Bad job id.");
+  const flag = (name: string) => (formData.has(`${name}_shown`) ? formData.get(name) === "on" : undefined);
+  const { data, error } = await supabase.rpc("set_job_flags", {
+    p_job: jobId,
+    p_subscription_active: flag("subscription_active"),
+    p_requires_client_approval: flag("requires_client_approval"),
+    p_reason: str(formData.get("reason")),
+  });
+  const f = jobFail(error);
+  if (f) return f;
+  refresh(org.slug);
+  return ok((data as { changed?: boolean } | null)?.changed ? "Saved." : "Nothing changed.");
 }
 
 export async function transitionJob(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -444,14 +470,13 @@ export async function decide(_prev: ActionState, formData: FormData): Promise<Ac
   const subjectType = str(formData.get("subject_type"));
   const decision = str(formData.get("decision"));
   if (!subjectId || !["draft_version", "outbox_message"].includes(subjectType)) return fail("Bad request.");
-  // Warnings don't block, but the approver must acknowledge them (BUILD_PLAN §3.5).
-  if (decision === "approved" && Number(str(formData.get("warnings")) || 0) > 0 && formData.get("ack") !== "on")
-    return fail("Tick the box to confirm you read the warnings.");
+  // Warnings don't block, but the approver must acknowledge them (BUILD_PLAN §3.5). approve_subject enforces it.
   const { error } = await supabase.rpc("approve_subject", {
     p_subject_type: subjectType,
     p_subject_id: subjectId,
     p_decision: decision,
     p_comment: optStr(formData.get("comment")) ?? undefined,
+    p_ack_warnings: formData.get("ack") === "on",
   });
   const f = jobFail(error);
   if (f) return f;

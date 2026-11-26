@@ -17,6 +17,7 @@ import {
   setDraftScope,
   startAudit,
   updateJob,
+  setJobFlags,
 } from "../actions";
 import { OutboxList } from "../../outbox/outbox-list";
 
@@ -34,6 +35,58 @@ const personName = (ctx: JobsContext, id: string | null | undefined) =>
   ctx.people.find((p) => p.id === id)?.name ?? "Someone";
 
 // ---------------------------------------------------------------------------
+/** Upkeep subscription (owner) and client approval (owner or admin). set_job_flags checks the same rules. */
+function JobFlags({ ctx, job, slug }: Pick<Props, "ctx" | "job" | "slug">) {
+  const role = ctx.org.role;
+  const canSub = role === "owner";
+  const canClient = role === "owner" || role === "admin";
+  const flags = (
+    <ul className="space-y-1 text-sm" data-testid="job-flags">
+      <li>
+        Requires client approval: {job.requires_client_approval ? "yes (G4 blocks until the portal, Phase 7)" : "no"}
+      </li>
+      <li>Upkeep subscription active (G6): {job.subscription_active ? "yes" : "no"}</li>
+    </ul>
+  );
+  if (!ctx.canWrite || !canClient)
+    return (
+      <div className="mt-4 border-t border-border pt-3">
+        {flags}
+        <p className="mt-1 text-xs text-muted-foreground">Only an owner or admin can change these.</p>
+      </div>
+    );
+  return (
+    <div className="mt-4 border-t border-border pt-3">
+      <ActionForm action={setJobFlags} submitLabel="Save flags" testId="job-flags-form" className="space-y-2">
+        <input type="hidden" name="org" value={slug} />
+        <input type="hidden" name="job_id" value={job.id} />
+        <input type="hidden" name="requires_client_approval_shown" value="1" />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="requires_client_approval" defaultChecked={job.requires_client_approval} />{" "}
+          Requires client approval (portal arrives in Phase 7; G4 will block until then)
+        </label>
+        {canSub ? (
+          <>
+            <input type="hidden" name="subscription_active_shown" value="1" />
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="subscription_active" defaultChecked={job.subscription_active} /> Upkeep
+              subscription active (G6)
+            </label>
+          </>
+        ) : (
+          <p className="text-sm">
+            Upkeep subscription active (G6): {job.subscription_active ? "yes" : "no"} (owner only)
+          </p>
+        )}
+        <div className="space-y-1">
+          <Label htmlFor="flags_reason">Reason for the change</Label>
+          <Input id="flags_reason" name="reason" maxLength={500} />
+        </div>
+      </ActionForm>
+    </div>
+  );
+}
+
 export function OverviewTab({ ctx, job, detail, slug }: Props) {
   const due = job.due_at ? new Date(job.due_at).toISOString().slice(0, 10) : "";
   return (
@@ -89,14 +142,6 @@ export function OverviewTab({ ctx, job, detail, slug }: Props) {
                 defaultValue={JSON.stringify(job.scope ?? {}, null, 2)}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="requires_client_approval" defaultChecked={job.requires_client_approval} />{" "}
-              Requires client approval (portal arrives in Phase 7; G4 will block until then)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="subscription_active" defaultChecked={job.subscription_active} /> Upkeep
-              subscription active (G6)
-            </label>
           </ActionForm>
         ) : (
           <dl className="space-y-1 text-sm">
@@ -105,6 +150,7 @@ export function OverviewTab({ ctx, job, detail, slug }: Props) {
             <div>Due: {when(job.due_at)}</div>
           </dl>
         )}
+        <JobFlags ctx={ctx} job={job} slug={slug} />
         <p className="mt-3 text-xs text-muted-foreground">
           Client data:{" "}
           {job.client_accounts?.data_sensitivity === "client_confidential" ? "client confidential" : "public only"}; AI

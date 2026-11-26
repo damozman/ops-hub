@@ -182,7 +182,6 @@ export default async function DraftPage({ params, searchParams }: PageProps<"/[o
                   <input type="hidden" name="subject_type" value="draft_version" />
                   <input type="hidden" name="subject_id" value={current!.id} />
                   <input type="hidden" name="decision" value="approved" />
-                  <input type="hidden" name="warnings" value={warnings.length} />
                   {warnings.length > 0 && (
                     <label className="flex items-center gap-2 text-xs">
                       <input type="checkbox" name="ack" /> I read the {warnings.length} warning(s)

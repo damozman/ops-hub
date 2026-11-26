@@ -1,6 +1,6 @@
 begin;
 \ir _helpers.psql
-select plan(122);
+select plan(123);
 
 create function tests.job_a() returns uuid language sql immutable as $$ select '81000000-0000-4000-8000-000000000001'::uuid $$;
 create function tests.job_b() returns uuid language sql immutable as $$ select '81000000-0000-4000-8000-000000000002'::uuid $$;
@@ -167,7 +167,9 @@ select throws_ok($$ insert into approvals (org_id, brand_id, subject_type, subje
 select tests.act_as(tests.u_viewer());
 select throws_ok($$ select public.approve_subject('draft_version', (select v1 from v), 'approved') $$, '42501', null, 'approvals: a viewer cannot approve');
 select tests.act_as(tests.u_owner());
-select lives_ok($$ select public.approve_subject('draft_version', (select v1 from v), 'approved') $$, 'two-person: the other human can approve');
+select throws_like($$ select public.approve_subject('draft_version', (select v1 from v), 'approved') $$, '%1 warning(s). Confirm%',
+  'approvals: a version with warnings needs the acknowledgement');
+select lives_ok($$ select public.approve_subject('draft_version', (select v1 from v), 'approved', null, true) $$, 'two-person: the other human can approve');
 select throws_ok($$ select public.approve_subject('draft_version', (select v2 from v), 'changes_requested') $$, '23514', null, 'approvals: changes requested needs a comment');
 select lives_ok($$ select public.approve_subject('draft_version', (select v2 from v), 'changes_requested', 'Add the delivery date') $$, 'approvals: owner requests changes');
 select throws_like($$ select public.transition_job(tests.job_a(), 'approved') $$, 'Gate G4 failed%Client note%changes requested%', 'G4: refuses when a draft has changes requested');

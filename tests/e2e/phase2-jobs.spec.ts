@@ -250,3 +250,23 @@ test("a brand-limited user can't see the FPD job", async ({ page }) => {
   const res = await page.goto(`/${ORG}/jobs/${BLUEBONNET_JOB}`);
   expect(res?.status()).toBe(404);
 });
+
+test("job flags: only an owner or admin gets the flags form", async ({ browser }) => {
+  const partnerCtx = await browser.newContext();
+  const partner = await partnerCtx.newPage();
+  await signInFresh(partner, "partner@example.test");
+  await partner.goto(`/${ORG}/jobs/${BLUEBONNET_JOB}`);
+  await expect(partner.getByTestId("job-flags")).toContainText("Upkeep subscription active");
+  await expect(partner.getByTestId("job-flags-form")).toHaveCount(0);
+
+  const ownerCtx = await browser.newContext();
+  const owner = await ownerCtx.newPage();
+  await signInFresh(owner, "owner@example.test");
+  await owner.goto(`/${ORG}/jobs/${BLUEBONNET_JOB}`);
+  const form = owner.getByTestId("job-flags-form");
+  await form.getByRole("button", { name: "Save flags" }).click();
+  await expect(form.getByText("Nothing changed.")).toBeVisible();
+
+  await partnerCtx.close();
+  await ownerCtx.close();
+});

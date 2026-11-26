@@ -144,6 +144,7 @@ export type Database = {
           subject_id: string;
           subject_type: string;
           updated_at: string | null;
+          warnings_acknowledged: boolean;
         };
         ComputedFields: never;
         Insert: {
@@ -164,6 +165,7 @@ export type Database = {
           subject_id: string;
           subject_type: string;
           updated_at?: string | null;
+          warnings_acknowledged?: boolean;
         };
         Update: {
           approver_id?: string;
@@ -183,6 +185,7 @@ export type Database = {
           subject_id?: string;
           subject_type?: string;
           updated_at?: string | null;
+          warnings_acknowledged?: boolean;
         };
         Relationships: [
           {
@@ -2451,7 +2454,13 @@ export type Database = {
         Returns: string;
       };
       approve_subject: {
-        Args: { p_comment?: string; p_decision: string; p_subject_id: string; p_subject_type: string };
+        Args: {
+          p_ack_warnings?: boolean;
+          p_comment?: string;
+          p_decision: string;
+          p_subject_id: string;
+          p_subject_type: string;
+        };
         Returns: string;
       };
       audit_actor_kind: { Args: Record<PropertyKey, never>; Returns: string };
@@ -2508,6 +2517,7 @@ export type Database = {
       job_gates: { Args: { p_job: string }; Returns: Json };
       job_move_kind: { Args: { p_from: string; p_to: string }; Returns: string };
       mark_notifications_digested: { Args: { p_ids: string[] }; Returns: number };
+      member_can: { Args: { p_brand: string; p_org: string; p_perm: string; p_user: string }; Returns: boolean };
       normalize_phone: { Args: { p_raw: string }; Returns: string };
       notifications_for_digest: {
         Args: { p_limit?: number };
@@ -2534,6 +2544,15 @@ export type Database = {
         Args: { p_done: boolean; p_evidence?: string; p_job: string; p_key: string; p_list: string };
         Returns: Json;
       };
+      set_job_flags: {
+        Args: {
+          p_job: string;
+          p_reason?: string;
+          p_requires_client_approval?: boolean;
+          p_subscription_active?: boolean;
+        };
+        Returns: Json;
+      };
       setting_bool: { Args: { p_default: boolean; p_key: string; p_org: string }; Returns: boolean };
       submit_form: {
         Args: {
@@ -2548,6 +2567,7 @@ export type Database = {
       };
       transition_job: { Args: { p_job: string; p_override?: boolean; p_reason?: string; p_to: string }; Returns: Json };
       version_checks_ok: { Args: { p_version: string }; Returns: boolean };
+      version_warning_count: { Args: { p_version: string }; Returns: number };
     };
     Enums: {
       [_ in never]: never;

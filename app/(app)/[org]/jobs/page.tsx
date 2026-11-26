@@ -136,9 +136,11 @@ export default async function JobsPage({ params, searchParams }: PageProps<"/[or
                 <Label htmlFor="contract_ref">Contract / proposal reference</Label>
                 <Input id="contract_ref" name="contract_ref" maxLength={200} />
               </div>
-              <label className="flex items-center gap-2 self-end text-sm">
-                <input type="checkbox" name="requires_client_approval" /> Requires client approval (portal: Phase 7)
-              </label>
+              {(ctx.org.role === "owner" || ctx.org.role === "admin") && (
+                <label className="flex items-center gap-2 self-end text-sm">
+                  <input type="checkbox" name="requires_client_approval" /> Requires client approval (portal: Phase 7)
+                </label>
+              )}
             </ActionForm>
           )}
         </Card>

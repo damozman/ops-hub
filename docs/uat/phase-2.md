@@ -36,21 +36,25 @@ private window) make the two-person steps easy.
     - Expect: the approval history marks the old approval **stale**; the job is back in **Drafts**, and Activity
       says "content changed after approval". Approvals always belong to an exact version.
 
+11. On the job's **Overview**, the partner looks for the "Requires client approval" and "Upkeep subscription" flags.
+    - Expect: the partner sees them read-only ("Only an owner or admin can change these"). Chris can change both, and
+      must give a reason; the change shows in Activity.
+
 ## Outbox (nothing is ever sent by the app)
 
-11. The partner opens **Outbox**, picks First Pass Data, enters a recipient and message, and clicks
+12. The partner opens **Outbox**, picks First Pass Data, enters a recipient and message, and clicks
     **Add outbox item**.
     - Expect: status **pending approval**; the partner's Approve button is disabled (they wrote it).
-12. Chris clicks **Approve** on it.
+13. Chris clicks **Approve** on it.
     - Expect: status **approved**. On the partner's screen: "Waiting for someone who can release it" (operators
       can't release unless the org setting allows it).
-13. Chris copies the message, sends it himself outside the app, then clicks **I sent it: mark sent**.
+14. Chris copies the message, sends it himself outside the app, then clicks **I sent it: mark sent**.
     - Expect: status **sent**, with Chris as sender and "manual" as the provider. Editing an approved item before
       release puts it back to pending approval.
 
 ## Checks settings
 
-14. Chris opens **Settings → Checks**.
+15. Chris opens **Settings → Checks**.
     - Expect: the rule packs (required fields, length, banned claims, spec fidelity, reviews, review replies, Google profile, SMS, email,
       honesty, data safety) with severity and
       version. Change one rule's severity for this org and save: the rule's version goes up and new check runs
@@ -58,12 +62,12 @@ private window) make the two-person steps easy.
 
 ## Job B: Trinity Paws Google profile tune-up (369), manual
 
-15. Walk Job B through intake → audit → drafts with a "Google profile description" draft. Try a description over
+16. Walk Job B through intake → audit → drafts with a "Google profile description" draft. Try a description over
     750 characters, and one containing a phone number or URL.
     - Expect: a length **blocker** for the long text, and a **warning** for the phone number or URL. Warnings don't
       block review, but the approver must tick "I read the warning(s)" before approving.
 
 ## Brand limits
 
-16. Sign in as `brandlimited@example.test` (369 only).
+17. Sign in as `brandlimited@example.test` (369 only).
     - Expect: only the Trinity Paws job on the board. Opening the Bluebonnet job's address gives "not found".
