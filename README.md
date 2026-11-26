@@ -22,7 +22,7 @@ Needs Node 22+, Docker Desktop, and Git. The Supabase CLI comes from `devDepende
    and `CRON_SECRET` to the output of `openssl rand -hex 32`
 5. Optional: set `SEED_OWNER_EMAIL` / `SEED_PARTNER_EMAIL` in `.env.local` and run `npm run seed:emails` to sign in
    with your own addresses (otherwise use `owner@example.test` / `partner@example.test`)
-6. `npm run dev` and open http://127.0.0.1:3000 (use `127.0.0.1`, not `localhost`, so cookies match)
+6. `npm run dev` and open http://127.0.0.1:3000 (use `127.0.0.1`, not `localhost`: sign-in links come back to `127.0.0.1`, and a session on one is not seen by the other)
 7. Enter a seed email, then open the sign-in link from the local mail catcher at http://127.0.0.1:54324
 8. Owners, admins and operators set up an authenticator app on first sign-in
 
