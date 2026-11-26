@@ -73,3 +73,56 @@ insert into public.memberships (org_id, user_id, role, brand_ids, status, create
   ('10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000006', 'operator',
    array['20000000-0000-4000-8000-000000000002'::uuid], 'active', '30000000-0000-4000-8000-000000000001'),
   ('10000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000007', 'owner', null, 'active', '30000000-0000-4000-8000-000000000007');
+
+-- ---------------------------------------------------------------------------
+-- Phase 1: CRM (all fictional). Phones use the 555-01xx fiction range.
+-- Default pipelines were created by the brands trigger.
+-- ---------------------------------------------------------------------------
+insert into public.companies (id, org_id, name, website, industry, street_address, city, state, sells_online, brand_ids, lifecycle, source, created_by) values
+  ('60000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'Lone Star Lift & Rack Supply (fictional)',
+   'https://example.test/lonestar', 'Industrial supply', '100 Example Way', 'Fort Worth', 'TX', true,
+   array['20000000-0000-4000-8000-000000000001'::uuid], 'prospect', 'referral', '30000000-0000-4000-8000-000000000001'),
+  ('60000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'Trinity Paws Grooming (fictional)',
+   'https://example.test/trinitypaws', 'Pet grooming', '200 Example Ave', 'Fort Worth', 'TX', false,
+   array['20000000-0000-4000-8000-000000000002'::uuid], 'client', 'form', '30000000-0000-4000-8000-000000000001'),
+  ('60000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'Cowtown Diesel Parts (fictional)',
+   'https://example.test/cowtown', 'Auto parts', null, 'Fort Worth', 'TX', true,
+   null, 'lead', 'cold outreach', '30000000-0000-4000-8000-000000000001'),
+  ('60000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', 'Bluebonnet Candle Co. (fictional)',
+   'https://example.test/bluebonnet', 'Home goods', null, 'Fort Worth', 'TX', true,
+   array['20000000-0000-4000-8000-000000000001'::uuid], 'client', 'upwork', '30000000-0000-4000-8000-000000000001');
+
+insert into public.contacts (id, org_id, company_id, first_name, last_name, email, phone_e164, title, owner_user_id, created_by) values
+  ('61000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001',
+   'Dana', 'Example', 'dana@lonestar.example.test', '+18175550101', 'Owner', '30000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001'),
+  ('61000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000002',
+   'Riley', 'Sample', 'riley@trinitypaws.example.test', '+18175550102', 'Manager', '30000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001'),
+  ('61000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000003',
+   'Morgan', 'Test', 'morgan@cowtown.example.test', '+18175550103', 'Parts lead', '30000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001'),
+  ('61000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000004',
+   'Casey', 'Placeholder', 'casey@bluebonnet.example.test', '+18175550104', 'Founder', '30000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001');
+
+insert into public.deals (id, org_id, brand_id, company_id, contact_id, pipeline_id, stage_id, title, value_cents, offer, owner_user_id, created_by)
+select v.id::uuid, '10000000-0000-4000-8000-000000000001', v.brand::uuid, v.company::uuid, v.contact::uuid, p.id,
+       (select s.id from public.pipeline_stages s where s.pipeline_id = p.id and s.name = v.stage), v.title, v.value, v.offer,
+       '30000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001'
+from (values
+  ('62000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000001', 'Discovery booked', 'Lone Star catalog cleanup', 450000, 'A'),
+  ('62000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000002', '61000000-0000-4000-8000-000000000002', 'Won', 'Trinity Paws local visibility', 120000, 'B'),
+  ('62000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000003', '61000000-0000-4000-8000-000000000003', 'New lead', 'Cowtown Diesel listing audit', 90000, 'A'),
+  ('62000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000004', '61000000-0000-4000-8000-000000000004', 'Won', 'Bluebonnet Shopify + Amazon refresh', 300000, 'A')
+) as v(id, brand, company, contact, stage, title, value, offer)
+join public.pipelines p on p.brand_id = v.brand::uuid;
+
+insert into public.forms (id, org_id, brand_id, name, consent_text, consent_text_version, created_by) values
+  ('63000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
+   'FPD listing audit request', 'I agree to receive emails and texts from First Pass Data about my request. Reply STOP to opt out.', 'fpd-2026-11-v1',
+   '30000000-0000-4000-8000-000000000001'),
+  ('63000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002',
+   '369 free local visibility check', 'I agree to receive emails and texts from 369 Agentic Systems about my request. Reply STOP to opt out.', '369-2026-11-v1',
+   '30000000-0000-4000-8000-000000000001');
+
+-- Invented headers for tests (NOT real AAFES headers). Chris adds the real ones in Settings > Import guard.
+insert into public.import_guard_signatures (org_id, label, header_signature, threshold, created_by) values
+  ('10000000-0000-4000-8000-000000000001', 'TEST AAFES-like template',
+   array['VENDOR_ITEM_NO', 'EXCH_DEPT', 'MFR_PART', 'UPC_CODE', 'RETAIL_PRICE'], 0.8, '30000000-0000-4000-8000-000000000001');

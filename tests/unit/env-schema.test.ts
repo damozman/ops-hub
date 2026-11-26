@@ -34,3 +34,15 @@ describe("parseServerEnv", () => {
     expect(() => parseServerEnv({ ...valid, APP_ENV: "production" })).toThrow(/MAILER_DRIVER/);
   });
 });
+
+describe("Phase 1 settings", () => {
+  it("defaults the form rate limit to 10 per minute and the mail catcher to localhost", () => {
+    const env = parseServerEnv(valid);
+    expect(env.FORMS_RATE_LIMIT_PER_MIN).toBe(10);
+    expect(env.MAILPIT_URL).toBe("http://127.0.0.1:54324");
+    expect(env.CRON_SECRET).toBeUndefined();
+  });
+  it("rejects a short cron secret", () => {
+    expect(() => parseServerEnv({ ...valid, CRON_SECRET: "short" })).toThrow(/CRON_SECRET/);
+  });
+});

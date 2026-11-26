@@ -5,22 +5,30 @@ import { getActiveBrand } from "@/server/brands/active-brand";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Badge } from "@/components/ui/card";
 import { BrandSwitcher } from "./brand-switcher";
+import { unreadCount } from "@/server/crm/queries";
 
 export default async function OrgLayout({ children, params }: LayoutProps<"/[org]">) {
   const session = await requireAppUser();
   const { org: slug } = await params;
   const org = await getOrgBySlug(slug);
-  const [{ brands, active }, canManageMembers, canManageSettings] = await Promise.all([
+  const [{ brands, active }, canManageMembers, canManageSettings, canReadCrm, unread] = await Promise.all([
     getActiveBrand(org.id),
     hasPerm(org.id, "members.manage"),
     hasPerm(org.id, "settings.manage"),
+    hasPerm(org.id, "crm.read"),
+    unreadCount(org.id),
   ]);
 
   const nav = [
     { href: `/${slug}/dashboard`, label: "Dashboard", show: true },
+    { href: `/${slug}/crm/deals`, label: "CRM", show: canReadCrm },
+    { href: `/${slug}/tasks`, label: "Tasks", show: canReadCrm },
+    { href: `/${slug}/inbox`, label: unread > 0 ? `Inbox (${unread})` : "Inbox", show: true },
     { href: `/${slug}/settings/org`, label: "Org settings", show: canManageSettings },
     { href: `/${slug}/settings/brands`, label: "Brands", show: true },
     { href: `/${slug}/settings/members`, label: "Members", show: canManageMembers },
+    { href: `/${slug}/settings/forms`, label: "Forms", show: canManageSettings },
+    { href: `/${slug}/settings/import-guard`, label: "Import guard", show: canManageSettings },
   ];
 
   return (

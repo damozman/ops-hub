@@ -13,7 +13,7 @@ export default async function Dashboard({ params }: PageProps<"/[org]/dashboard"
       <div>
         <h1 className="text-xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Phase 0 foundation. CRM, jobs and review queues arrive in Phases 1 and 2.
+          CRM, tasks and your inbox are in the menu above. Jobs and review queues arrive in Phase 2.
         </p>
       </div>
       <section aria-label="Brands" className="grid gap-4 sm:grid-cols-2">

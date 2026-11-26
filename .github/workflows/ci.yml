@@ -71,6 +71,8 @@ jobs:
             echo "DEPLOY_MODE=cloud"
             echo "MAILER_DRIVER=local"
             echo "AUDIT_IP_HASH_SALT=$(openssl rand -base64 32)"
+            echo "CRON_SECRET=$(openssl rand -hex 32)"
+            echo "FORMS_RATE_LIMIT_PER_MIN=10"
           } > .env.local
 
       - name: Build

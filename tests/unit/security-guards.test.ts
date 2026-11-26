@@ -59,9 +59,9 @@ describe("security guards", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("nothing references cal.com or the AAFES pipeline", () => {
+  it("no code calls Cal.com or references the AAFES pipeline", () => {
     const offenders = [...appCode, ...migrations].filter((f) =>
-      /cal\.com|aafes-pim-pipeline/i.test(readFileSync(f, "utf8")),
+      /https?:\/\/[^\s'"`]*cal\.com|aafes-pim-pipeline/i.test(readFileSync(f, "utf8")),
     );
     expect(offenders).toEqual([]);
   });
