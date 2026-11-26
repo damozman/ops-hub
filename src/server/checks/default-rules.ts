@@ -82,7 +82,13 @@ export const DEFAULT_RULES: Seed[] = [
     severity: "warning",
     params: {
       kinds: ALL_TEXT,
-      patterns: ["\\bthe\\s+best\\b", "\\bbest[- ]in[- ]class\\b", "(?<![\\w])#\\s?1\\b", "\\bnumber\\s+one\\b", "\\bworld'?s\\s+(?:best|leading)\\b"],
+      patterns: [
+        "\\bthe\\s+best\\b",
+        "\\bbest[- ]in[- ]class\\b",
+        "(?<![\\w])#\\s?1\\b",
+        "\\bnumber\\s+one\\b",
+        "\\bworld'?s\\s+(?:best|leading)\\b",
+      ],
     },
   },
   {
@@ -107,7 +113,10 @@ export const DEFAULT_RULES: Seed[] = [
     pack: "3_banned_claims",
     title: "FDA approved / certified",
     severity: "blocker",
-    params: { kinds: ALL_TEXT, patterns: ["\\bFDA[- ](?:approved|certified|registered|cleared)\\b", "\\bapproved\\s+by\\s+(?:the\\s+)?FDA\\b"] },
+    params: {
+      kinds: ALL_TEXT,
+      patterns: ["\\bFDA[- ](?:approved|certified|registered|cleared)\\b", "\\bapproved\\s+by\\s+(?:the\\s+)?FDA\\b"],
+    },
   },
   {
     rule_key: "claims.pesticide",
@@ -163,7 +172,26 @@ export const DEFAULT_RULES: Seed[] = [
     params: {
       kinds: ["listing", "gbp_description", "gbp_post"],
       min_length: 4,
-      allow: ["USB", "LED", "HDMI", "USA", "UPC", "SKU", "NAPA", "AAFES", "HVAC", "BBQ", "ASAP", "FAQ", "UV", "GFCI", "OSHA", "NSF", "ANSI", "ISO"],
+      allow: [
+        "USB",
+        "LED",
+        "HDMI",
+        "USA",
+        "UPC",
+        "SKU",
+        "NAPA",
+        "AAFES",
+        "HVAC",
+        "BBQ",
+        "ASAP",
+        "FAQ",
+        "UV",
+        "GFCI",
+        "OSHA",
+        "NSF",
+        "ANSI",
+        "ISO",
+      ],
     },
   },
   {
@@ -192,7 +220,7 @@ export const DEFAULT_RULES: Seed[] = [
         "ounces?",
         "in",
         "inch(?:es)?",
-        "\"",
+        '"',
         "ft",
         "feet",
         "foot",
@@ -335,7 +363,9 @@ export const DEFAULT_RULES: Seed[] = [
     severity: "blocker",
     params: {
       kinds: ["sms"],
-      patterns: ["\\b(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|ow\\.ly|is\\.gd|buff\\.ly|rebrand\\.ly|cutt\\.ly|shorturl\\.at)/"],
+      patterns: [
+        "\\b(?:bit\\.ly|tinyurl\\.com|t\\.co|goo\\.gl|ow\\.ly|is\\.gd|buff\\.ly|rebrand\\.ly|cutt\\.ly|shorturl\\.at)/",
+      ],
     },
   },
   {
@@ -392,7 +422,11 @@ export const DEFAULT_RULES: Seed[] = [
     severity: "warning",
     params: {
       kinds: OUTREACH.concat(["gbp_description"]),
-      patterns: ["\\b\\d+(?:\\.\\d+)?\\s?%(?!\\s?off)", "\\b\\d+\\s+out\\s+of\\s+\\d+\\b", "\\b\\d+x\\s+(?:more|faster|better)\\b"],
+      patterns: [
+        "\\b\\d+(?:\\.\\d+)?\\s?%(?!\\s?off)",
+        "\\b\\d+\\s+out\\s+of\\s+\\d+\\b",
+        "\\b\\d+x\\s+(?:more|faster|better)\\b",
+      ],
     },
   },
   {
@@ -400,7 +434,7 @@ export const DEFAULT_RULES: Seed[] = [
     pack: "10_honesty",
     title: "Testimonials need a source note",
     severity: "warning",
-    params: { kinds: ALL_TEXT, patterns: ["[\"“][^\"”]{10,}[\"”]\\s*[—–-]\\s*[A-Z][a-z]+"] },
+    params: { kinds: ALL_TEXT, patterns: ['["“][^"”]{10,}["”]\\s*[—–-]\\s*[A-Z][a-z]+'] },
   },
   // 11. Data safety
   {

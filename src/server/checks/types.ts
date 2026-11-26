@@ -3,14 +3,7 @@
 export type Severity = "blocker" | "warning" | "info";
 
 export type DraftKind =
-  | "listing"
-  | "gbp_description"
-  | "gbp_post"
-  | "review_reply"
-  | "review_request"
-  | "sms"
-  | "email"
-  | "other";
+  "listing" | "gbp_description" | "gbp_post" | "review_reply" | "review_request" | "sms" | "email" | "other";
 
 export type Marketplace = "amazon" | "walmart" | "shopify" | "gbp" | "openai_feed" | "other";
 

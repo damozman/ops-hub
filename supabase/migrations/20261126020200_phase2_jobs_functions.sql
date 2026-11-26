@@ -457,7 +457,7 @@ begin
   select coalesce(max(version), 0) + 1 into new.version from public.draft_versions where draft_id = new.draft_id;
 
   v_hash := public.canonical_hash(new.content);
-  if new.content_hash is not null and new.content_hash <> v_hash then
+  if nullif(new.content_hash, '') is not null and new.content_hash <> v_hash then
     raise exception 'content_hash does not match the content.' using errcode = '23514';
   end if;
   new.content_hash := v_hash;

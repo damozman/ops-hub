@@ -161,8 +161,8 @@ test("cross-sell: winning an Offer A deal for a company with a street address cr
   await page.goto(`/mosley-dev/crm/companies/${LONE_STAR}`);
   await expect(page.getByTestId("cross-sell")).toContainText("Cross-sell: offer 369 local visibility");
   expect(sql(`select count(*) from tasks where dedupe_key = 'xsell:A->B:${LONE_STAR}'`)).toBe("1");
-  // No outbox exists in Phase 1, and nothing was queued anywhere.
-  expect(sql(`select coalesce(to_regclass('public.outbox_messages')::text, 'none')`)).toBe("none");
+  // Cross-sell creates a task only: nothing was queued in the outbox.
+  expect(sql(`select count(*) from outbox_messages`)).toBe("0");
 });
 
 test("@mention notifies only the mentioned user; a viewer cannot comment", async ({ page }) => {

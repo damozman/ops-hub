@@ -44,7 +44,8 @@ function scan(fields: TextField[], patterns: string[], message: (m: string) => s
     for (const f of fields) {
       re.lastIndex = 0;
       const m = re.exec(f.text);
-      if (m) hits.push({ message: message(m[0]), span: { field: f.field, start: m.index, end: m.index + m[0].length } });
+      if (m)
+        hits.push({ message: message(m[0]), span: { field: f.field, start: m.index, end: m.index + m[0].length } });
     }
   }
   return hits;
@@ -182,7 +183,11 @@ export const RULES: Record<string, RuleImpl> = {
     const s = smsSegments(body);
     const max = num(params.warn_above, 2);
     return s.segments > max
-      ? [{ message: `This SMS is ${s.segments} segments (${s.encoding}, ${s.units} units); keep it to ${max} or fewer.` }]
+      ? [
+          {
+            message: `This SMS is ${s.segments} segments (${s.encoding}, ${s.units} units); keep it to ${max} or fewer.`,
+          },
+        ]
       : [];
   },
 
@@ -218,7 +223,11 @@ export const RULES: Record<string, RuleImpl> = {
   },
   "claims.title_promo": (content, ctx, params) =>
     appliesTo(params, ctx)
-      ? scan(fieldsOf(content, params), strList(params.patterns), (m) => `Promo / price / shipping text in the title: "${m}".`)
+      ? scan(
+          fieldsOf(content, params),
+          strList(params.patterns),
+          (m) => `Promo / price / shipping text in the title: "${m}".`,
+        )
       : [],
   "claims.all_caps": (content, ctx, params) => {
     if (!appliesTo(params, ctx)) return [];
@@ -229,7 +238,10 @@ export const RULES: Record<string, RuleImpl> = {
       for (const m of f.text.matchAll(/\b[A-Z][A-Z0-9]+\b/g)) {
         const letters = m[0].replace(/[0-9]/g, "");
         if (letters.length >= min && !allow.has(m[0])) {
-          hits.push({ message: `ALL CAPS word "${m[0]}".`, span: { field: f.field, start: m.index!, end: m.index! + m[0].length } });
+          hits.push({
+            message: `ALL CAPS word "${m[0]}".`,
+            span: { field: f.field, start: m.index!, end: m.index! + m[0].length },
+          });
           break;
         }
       }
@@ -266,7 +278,11 @@ export const RULES: Record<string, RuleImpl> = {
   // 5. Reviews (Google policy + FTC 16 CFR Part 465).
   "reviews.gating": (content, ctx, params) =>
     appliesTo(params, ctx)
-      ? scan(fieldsOf(content, params), strList(params.patterns), (m) => `Review gating: "${m}". Ask every customer the same way.`)
+      ? scan(
+          fieldsOf(content, params),
+          strList(params.patterns),
+          (m) => `Review gating: "${m}". Ask every customer the same way.`,
+        )
       : [],
   "reviews.incentive": (content, ctx, params) =>
     appliesTo(params, ctx)
@@ -280,7 +296,11 @@ export const RULES: Record<string, RuleImpl> = {
   // 6. Review replies.
   "review_reply.personal_data": (content, ctx, params) =>
     appliesTo(params, ctx)
-      ? scan(fieldsOf(content, params), strList(params.patterns), (m) => `Customer personal data in a public reply: "${m}".`)
+      ? scan(
+          fieldsOf(content, params),
+          strList(params.patterns),
+          (m) => `Customer personal data in a public reply: "${m}".`,
+        )
       : [],
   "review_reply.tone": (content, ctx, params) =>
     appliesTo(params, ctx)
@@ -290,14 +310,20 @@ export const RULES: Record<string, RuleImpl> = {
   // 7. GBP content.
   "gbp.contact_in_post": (content, ctx, params) =>
     appliesTo(params, ctx)
-      ? scan(fieldsOf(content, params), strList(params.patterns), (m) => `Phone number or URL in the post body: "${m}". Use the button instead.`)
+      ? scan(
+          fieldsOf(content, params),
+          strList(params.patterns),
+          (m) => `Phone number or URL in the post body: "${m}". Use the button instead.`,
+        )
       : [],
 
   // 8. SMS (TCPA / CTIA / A2P). Consent, A2P status and quiet hours are checked at send time (Phase 6).
   "sms.stop": (content, ctx, params) => {
     if (!appliesTo(params, ctx) || content.first_message === false) return [];
     const re = compile(str(params.pattern) || "reply\\s+stop");
-    return re && !re.test(str(content.body)) ? [{ message: 'Missing opt-out wording, e.g. "Reply STOP to opt out".' }] : [];
+    return re && !re.test(str(content.body))
+      ? [{ message: 'Missing opt-out wording, e.g. "Reply STOP to opt out".' }]
+      : [];
   },
   "sms.brand": (content, ctx, params) => {
     if (!appliesTo(params, ctx) || !ctx.brandName) return [];
@@ -307,7 +333,11 @@ export const RULES: Record<string, RuleImpl> = {
   },
   "sms.shortener": (content, ctx, params) =>
     appliesTo(params, ctx)
-      ? scan(fieldsOf(content, params), strList(params.patterns), (m) => `URL shortener "${m}" (carriers filter these).`)
+      ? scan(
+          fieldsOf(content, params),
+          strList(params.patterns),
+          (m) => `URL shortener "${m}" (carriers filter these).`,
+        )
       : [],
   "sms.shaft": (content, ctx, params) =>
     appliesTo(params, ctx)
@@ -322,7 +352,8 @@ export const RULES: Record<string, RuleImpl> = {
     const unsub = compile(str(params.unsubscribe_pattern) || "unsubscribe");
     const address = compile(str(params.address_pattern) || "\\d+\\s+\\w+");
     if (unsub && !unsub.test(body)) hits.push({ message: "Marketing email needs an unsubscribe link." });
-    if (address && !address.test(body)) hits.push({ message: "Marketing email needs the sender's physical postal address." });
+    if (address && !address.test(body))
+      hits.push({ message: "Marketing email needs the sender's physical postal address." });
     return hits;
   },
 
@@ -348,7 +379,10 @@ export const RULES: Record<string, RuleImpl> = {
     for (const f of textFields(content))
       for (const m of f.text.matchAll(/\b(?:\d[ -]?){12,18}\d\b/g)) {
         if (luhnValid(m[0].replace(/[ -]/g, "")))
-          hits.push({ message: "Looks like a payment card number.", span: { field: f.field, start: m.index!, end: m.index! + m[0].length } });
+          hits.push({
+            message: "Looks like a payment card number.",
+            span: { field: f.field, start: m.index!, end: m.index! + m[0].length },
+          });
       }
     return hits;
   },

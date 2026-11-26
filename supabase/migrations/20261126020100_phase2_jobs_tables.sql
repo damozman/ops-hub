@@ -175,9 +175,9 @@ create table public.draft_versions (
   org_id uuid not null references public.orgs (id) on delete cascade,
   brand_id uuid not null,
   draft_id uuid not null references public.drafts (id) on delete cascade,
-  version int not null,
+  version int not null default 0,  -- numbered by trigger
   content jsonb not null check (jsonb_typeof(content) = 'object'),
-  content_hash text not null,
+  content_hash text not null default '',  -- set (or verified) by trigger
   author_kind text not null default 'user' check (author_kind in ('user', 'ai', 'jack')),
   author_id uuid,
   ai_run_id uuid,
@@ -274,7 +274,7 @@ create table public.outbox_messages (
   subject text,
   body text not null default '',
   payload jsonb not null default '{}'::jsonb,
-  content_hash text not null,
+  content_hash text not null default '',  -- always computed by trigger
   approval_id uuid references public.approvals (id) on delete set null,
   status text not null default 'pending_approval'
     check (status in ('pending_approval', 'approved', 'queued', 'sent', 'failed', 'blocked', 'cancelled')),
