@@ -48,6 +48,7 @@ select lives_ok(
 select tests.reset_role();
 create function tests.definer_actor_kind() returns text language sql security definer set search_path = public
   as $$ select public.audit_actor_kind() $$;
+grant execute on function tests.definer_actor_kind() to authenticated;
 grant usage on schema extensions, tests to svc_drafts;
 grant execute on all functions in schema extensions, tests to svc_drafts;
 select tests.act_as_role('svc_drafts');
