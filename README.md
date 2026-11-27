@@ -8,6 +8,9 @@ append-only audit log, RLS everywhere, service-token table and restricted roles,
 Phase 1 (CRM): companies, contacts, deal boards per brand with live updates, timeline, tasks, comments with
 @mentions, inbox + daily digest (local mail catcher only), public lead form with consent, contact CSV import with the
 import guard, booking links, cross-sell suggestion tasks.
+Phase 2 (jobs): client accounts, jobs board, job pages with intake checklist and manual audits, drafts with immutable
+hashed versions and a word diff, a rules-as-data checks engine, review queue, two-person approvals, stage gates G1-G6
+enforced in Postgres ([ADR 0001](docs/adr/0001-stage-gates.md)), and an outbox with manual release only.
 
 ## Local setup
 
@@ -60,7 +63,7 @@ CI (`.github/workflows/ci.yml`) runs all of the above plus `npm audit` and a git
 - Separate from `aafes-pim-pipeline`: no shared code, data or database.
 - No real client data, keys or tokens in the repo or in chats. All seed and test data is invented.
 - Every state change is permission-checked in server code **and** Postgres RLS, and is written to `audit_log`.
-- Nothing outbound without human approval (outbox arrives in Phase 2). Booking links are stored as links; the
+- Nothing outbound without human approval. The outbox only records manual releases ("I sent it"). Booking links are stored as links; the
   scheduling service is never called.
 
 ## Layout

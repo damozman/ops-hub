@@ -8,6 +8,7 @@ export const PERMISSIONS = [
   "members.manage",
   "crm.read",
   "crm.write",
+  "jobs.read",
   "jobs.write",
   "jobs.transition",
   "drafts.write",

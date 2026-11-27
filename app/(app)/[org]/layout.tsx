@@ -11,17 +11,23 @@ export default async function OrgLayout({ children, params }: LayoutProps<"/[org
   const session = await requireAppUser();
   const { org: slug } = await params;
   const org = await getOrgBySlug(slug);
-  const [{ brands, active }, canManageMembers, canManageSettings, canReadCrm, unread] = await Promise.all([
-    getActiveBrand(org.id),
-    hasPerm(org.id, "members.manage"),
-    hasPerm(org.id, "settings.manage"),
-    hasPerm(org.id, "crm.read"),
-    unreadCount(org.id),
-  ]);
+  const [{ brands, active }, canManageMembers, canManageSettings, canReadCrm, canReadJobs, canManageChecks, unread] =
+    await Promise.all([
+      getActiveBrand(org.id),
+      hasPerm(org.id, "members.manage"),
+      hasPerm(org.id, "settings.manage"),
+      hasPerm(org.id, "crm.read"),
+      hasPerm(org.id, "jobs.read"),
+      hasPerm(org.id, "checks.manage"),
+      unreadCount(org.id),
+    ]);
 
   const nav = [
     { href: `/${slug}/dashboard`, label: "Dashboard", show: true },
     { href: `/${slug}/crm/deals`, label: "CRM", show: canReadCrm },
+    { href: `/${slug}/jobs`, label: "Jobs", show: canReadJobs },
+    { href: `/${slug}/review-queue`, label: "Review queue", show: canReadJobs },
+    { href: `/${slug}/outbox`, label: "Outbox", show: canReadJobs },
     { href: `/${slug}/tasks`, label: "Tasks", show: canReadCrm },
     { href: `/${slug}/inbox`, label: unread > 0 ? `Inbox (${unread})` : "Inbox", show: true },
     { href: `/${slug}/settings/org`, label: "Org settings", show: canManageSettings },
@@ -29,6 +35,7 @@ export default async function OrgLayout({ children, params }: LayoutProps<"/[org
     { href: `/${slug}/settings/members`, label: "Members", show: canManageMembers },
     { href: `/${slug}/settings/forms`, label: "Forms", show: canManageSettings },
     { href: `/${slug}/settings/import-guard`, label: "Import guard", show: canManageSettings },
+    { href: `/${slug}/settings/checks`, label: "Checks", show: canManageChecks },
   ];
 
   return (
